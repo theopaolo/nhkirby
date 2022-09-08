@@ -1,0 +1,68 @@
+title: serie
+
+#  gallery blueprint
+tabs:
+  content:
+    label: Content
+    sections:
+      content:
+        type: fields
+        fields:
+          titre:
+            label: Titre de la serie
+            type:  text
+            width: 2/4
+          bgdark:
+            label: Couleur de fond
+            type:  toggle
+            text:
+              - light
+              - dark
+            help: Default is light
+            width: 1/4
+          marges:
+            label: Marges
+            type:  toggle
+            text:
+              - avec
+              - sans
+            help: Default is avec
+            width: 1/4
+          text:
+            label: Introduction
+            type:  writer
+            marks: false
+            nodes: false
+
+      serieimages:
+        type: fields
+        fields:
+          gallery:
+            label: Gallery
+            type:  layout
+            layouts:
+              - "1/1"
+              - "1/2, 1/2"
+            fieldsets:
+              - image
+            settings:
+              fields:
+                class:
+                  type: select
+                  default: center
+                  options:
+                    center: Centre
+                    grid: Grid
+          video:
+            label: Video
+            type: url
+  imagestab:
+    label: Images
+    sections:
+      pagefiles:
+        type: files
+        multiple: true
+        size:  small
+        layout: cards
+        help:  Ajouter des images à la galerie
+

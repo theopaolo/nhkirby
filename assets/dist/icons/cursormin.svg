@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="14" height="14" viewBox="0 0 14 14">
+  <defs>
+    <clipPath id="clip-Curseur_-">
+      <rect width="14" height="14"/>
+    </clipPath>
+  </defs>
+  <g id="Curseur_-" data-name="Curseur -" clip-path="url(#clip-Curseur_-)">
+    <g id="Ligne_2" data-name="Ligne 2" transform="translate(2 7)">
+      <path d="M 10.25 1 L 10 1 L 0 1 L -0.25 1 L -0.25 0.75 L -0.25 -0.75 L -0.25 -1 L 0 -1 L 10 -1 L 10.25 -1 L 10.25 -0.75 L 10.25 0.75 L 10.25 1 Z" stroke="none"/>
+      <path d="M 10 0.75 L 10 -0.75 L 0 -0.75 L 0 0.75 L 10 0.75 M 10.5 1.25 L -0.5 1.25 L -0.5 -1.25 L 10.5 -1.25 L 10.5 1.25 Z" stroke="none" fill="#fff"/>
+    </g>
+  </g>
+</svg>

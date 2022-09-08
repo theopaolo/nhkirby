@@ -1,0 +1,29 @@
+name: field.blocks.image.name
+icon: image
+preview: image
+fields:
+  image:
+    label: field.blocks.image.name
+    type: files
+    query: model.images
+    multiple: false
+    image:
+      back: black
+    uploads:
+      template: blocks/image
+  alt:
+    label: field.blocks.image.alt
+    type: text
+    icon: title
+  position:
+    label: Position
+    type: select
+    options:
+      self-start: Gauche
+      self-end: Droite
+  colpos:
+    label: Sur colone de droite ?
+    type:  toggle
+    text:
+      - non
+      - oui à droite

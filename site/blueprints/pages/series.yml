@@ -1,0 +1,15 @@
+title: Series
+
+sections:
+
+  drafts:
+      label: Brouillon
+      type: pages
+      status: draft
+      templates: serie
+
+  published:
+    label: En ligne
+    type: pages
+    status: listed
+    templates: serie
