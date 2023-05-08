@@ -1,0 +1,10 @@
+title: Videos
+
+fields:
+  links:
+    label: Videos links
+    type: structure
+    fields:
+      lien:
+        label: Liens
+        type: url

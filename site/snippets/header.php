@@ -16,4 +16,4 @@
     <meta name="theme-color" content="#ffffff">
     <?= css('assets/css/style.css') ?>
 </head>
-<body <?php if($page->template() == "serie"):?>class='scroll <?php if($page->bgdark()->toBool() === true){ echo "bg-dark"; }?>' <?php endif ?> >
+<body <?php if($page->template() == "serie"):?>class='scroll'<?php endif?> >

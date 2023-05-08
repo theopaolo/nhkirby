@@ -1,47 +1,36 @@
 <div class="introduction grid bg-dark absolute z-index-2">
-
-    <div class="w-full h-full">
-      <img src="static/laniakea/Laniakea03.jpg" alt="Home image">
-    </div>
-
-    <section class="langs">
-      <div class="en f-1 flex align-center h-full bg-dark justify-center">
-        <div>
-          <p>
-            EN — WELCOME ON NICOLAS HERMAN’S PORTFOLIO, <br>
-            WE ARE PLEASE TO LET YOU IN. <br>
-            EXPLORE THE SPHERE, AND LET YOUR MIND TELL A STORY.
-          </p>
-          <ul>
-            <li>- DOUBLE CLICK + TO SEE THINGS MORE CLOSELY.</li>
-            <li>- ZOOM AND DEZOOM TO TRAVEL THROUGHT PICTURES</li>
-            <li>- CLICK ON RESET TO RESTART YOUR EXPERIENCE.</li>
-            <li>- DISCOVER THE FULL PORTFOLIO ON ‘SÉRIES’</li>
-          </ul>
-          <br>
-          <p>ENGLISH COMING SOON</p>
-          <button class="btnintro">→ enter</button>
-        </div>
-      </div>
-      <div class="fr f-1 flex align-center h-full bg-dark justify-center">
-        <div>
-          <p>
-            FR — WELCOME ON NICOLAS HERMAN’S PORTFOLIO, <br>
-            WE ARE PLEASE TO LET YOU IN. <br>
-            EXPLORE THE SPHERE, AND LET YOUR MIND TELL A STORY.
-          </p>
-          <ul>
-            <li>- DOUBLE CLICK + TO SEE THINGS MORE CLOSELY.</li>
-            <li>- ZOOM AND DEZOOM TO TRAVEL THROUGHT PICTURES</li>
-            <li>- CLICK ON RESET TO RESTART YOUR EXPERIENCE.</li>
-            <li>- DISCOVER THE FULL PORTFOLIO ON ‘SÉRIES’</li>
-          </ul>
-          <br>
-          <p>ENGLISH COMING SOON</p>
-          <button class="btnintro">→ enter</button>
-        </div>
-      </div>
-
-    </section>
-
+  <div class="w-full h-full">
+    <?php $cover = $site->find('intro')->cover()->toFile() ?>
+    <img
+      src="<?= $cover->url() ?>"
+      srcset="<?= $cover->srcset(['400w'  => ['width' => 400, 'format' => 'webp'],'800w'  => ['width' => 800, 'format' => 'webp'],'1200w' => ['width' => 1200, 'format' => 'webp']]) ?>" />
   </div>
+  <section class="langs">
+    <div class="en f-1 flex align-center h-full bg-dark justify-center">
+      <div>
+        <p> EN </p>
+        <ul>
+          <li>- DOUBLE CLICK TO OPEN THE IMAGES IN LARGE FORMAT</li>
+          <li>- CLICK AND DRAG TO ROTATE THE SPHERE</li>
+          <li>- SCROLL TO ZOOM IN OR OUT</li>
+          <li>- RESET YOUR IMMERSION BY CLICKING ON "NICOLAS HERMANN"</li>
+          <li>- FIND OUT MORE ABOUT HIS WORK BY CLICKING ON "SERIES"</li>
+        </ul>
+        <button class="btnintro" data-lang="en">→ enter</button>
+      </div>
+    </div>
+    <div class="fr f-1 flex align-center h-full bg-dark justify-center">
+      <div>
+        <p> FR </p>
+        <ul>
+          <li>- DOUBLE CLIQUEZ POUR OUVRIR LES IMAGES EN GRAND FORMAT</li>
+          <li>- CLIQUEZ ET DÉPLACEZ POUR TOURNER LA SPHERE</li>
+          <li>- SCROLLEZ POUR ZOOMER OU DÉZOOMER</li>
+          <li>- RÉINITIALISEZ VOTRE IMMERSION EN CLIQUANT SUR "NICOLAS HERMANN"</li>
+          <li>- DÉCOUVREZ SON TRAVAIL PLUS EN PRÉCISION EN CLIQUANT SUR "SÉRIES"</li>
+        </ul>
+        <button class="btnintro" data-lang="fr">→ entrer</button>
+      </div>
+    </div>
+  </section>
+</div>

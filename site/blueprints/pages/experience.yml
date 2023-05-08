@@ -1,0 +1,8 @@
+title: Images
+status: false
+
+sections:
+  images:
+    type: files
+    template: image
+    layout: cards

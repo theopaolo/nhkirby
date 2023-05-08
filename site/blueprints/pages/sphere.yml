@@ -1,0 +1,12 @@
+title: Sphere
+
+sections:
+  pages:
+    type: pages
+    layout: cards
+    template: experience
+  radiu:
+    type: range
+    step: 1
+    min: 10
+    max: 50

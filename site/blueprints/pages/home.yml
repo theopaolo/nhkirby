@@ -1,0 +1,10 @@
+title: Expérience
+
+sections:
+  spherea:
+    label: Spheres
+    layout: cards
+    type: pages
+    template:
+      - experience
+      - videos

@@ -1,9 +1,11 @@
-<?php snippet(['header', 'intro']) ?>
+<?php snippet('header') ?>
+<?php snippet('intro') ?>
 
 <div class="container exp">
 
     <div class="namecount z-index-1">
-      <h1 class="z-index-3 expbtn">Nicolas Hermann</h1>
+      <h1 class="z-index-4 expbtn"><a href="<?php $site->url()?>">Nicolas Hermann</a></h1>
+      <span class="cpar"></span>
       <div class="soundbtn">
         <div class="wave">
           <span></span><span></span><span></span><span></span><span></span><span></span>
@@ -15,15 +17,28 @@
     <?php snippet('nav') ?>
 
     <div class="lightbox">
-      <!-- <button class="boxbtn">fermer</button> -->
     </div>
 
-    <audio loop>
-      <source src="static/OlivierMessiaenLaviergeetlenfant.mp3" type="audio/mpeg">
-    </audio>
+    <?php if($sound = $site->fondsonore()->toFile()): ?>
+      <audio loop>
+        <source src="<?= $sound->url() ?>" type="<?= $sound->mime() ?>">
+      </audio>
+    <?php endif ?>
+
   </div>
 
-<section class="videos">
+<section class="imgverticales">
+  <?php foreach( $page->find('verticales')->images() as $image):  ?>
+    <span data-imgurl="<?= $image->thumb(["width" => 900])->url() ?>"></span>
+  <?php endforeach ?>
+</section>
+<section class="imghorizontales">
+  <?php foreach( $page->find('horizontales')->images() as $image):  ?>
+    <span data-imgurl="<?= $image->thumb(["width" => 900])->url() ?>"></span>
+  <?php endforeach ?>
+</section>
+
+<!-- <section class="videos">
   <video class="video" loop muted="muted" crossOrigin="anonymous" playsinline style="display: none;" >
     <source src="https://theopaolo.com/nhvideos/spectreeau.mp4" type='video/mp4' >
   </video>
@@ -34,7 +49,7 @@
     <source src="https://theopaolo.com/nhvideos/embryon.mp4" type='video/mp4' >
   </video>
   <video class="video" loop muted="muted" crossOrigin="anonymous" playsinline style="display: none;" >
-    <source src="https://theopaolo.com/nhvideos/bigbang.mp4" type='video/mp4' >
+    <source src="https://theopaolo.com/nhvideos/embryon.mp4" type='video/mp4' >
   </video>
   <video class="video" loop muted="muted" crossOrigin="anonymous" playsinline style="display: none;" >
     <source src="https://theopaolo.com/nhvideos/birds.mp4" type='video/mp4' >
@@ -54,12 +69,19 @@
   <video class="video" loop muted="muted" crossOrigin="anonymous" playsinline style="display: none;" >
     <source src="https://theopaolo.com/nhvideos/saturne.mp4" type='video/mp4' >
   </video>
-</section>
+</section> -->
 
 <canvas class="webgl"></canvas>
-<div class="loading-bar"></div>
+<div class="loading-bar"> </div>
+<span class="loadpercent">0%</span>
+
+<main id="swup" class="transition-fade">
+  <section>
+    <?php snippet('mobnav') ?>
+  </section>
+</main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.0/gsap.min.js"></script>
-<?= js('assets/dist/bundle.js') ?>
-
+<?= js('assets/dist/js/app.js') ?>
+<?= js('assets/js/introScript.js') ?>
 <?php snippet('footer') ?>

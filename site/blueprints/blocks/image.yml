@@ -19,11 +19,12 @@ fields:
     label: Position
     type: select
     options:
-      self-start: Gauche
-      self-end: Droite
-  colpos:
-    label: Sur colone de droite ?
-    type:  toggle
+      serie-center: Serie center
+      self-end: Self end
+      self-start: Self start
+  gridcol:
+    label: With Grid col 2 ?
+    type: toggle
     text:
-      - non
-      - oui à droite
+      - "no"
+      - "yes"

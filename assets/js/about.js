@@ -1,15 +1,32 @@
 let bio = document.querySelector(".bio")
 let parcour = document.querySelector(".parcour")
-
 let btnclose = document.querySelector(".btn-close")
+let navbtn = document.querySelector(".nav-action")
+let offnav = document.querySelector(".offscreen-nav")
+let aboutcontent = document.getElementById("about")
+
 btnclose.addEventListener("click", aboutAction)
-function aboutAction() {
+navbtn.addEventListener('click', togglenav)
+
+function aboutAction(e) {
+  e.preventDefault();
   if (document.referrer == "") {
-    window.location.href = "index.html";
+    window.location.href = "/";
   } else {
     window.history.back()
   }
 }
+
+function togglenav()  {
+  this.classList.toggle('nav-active')
+  offnav.classList.toggle('nav-visible')
+  aboutcontent.classList.toggle('no-scroll')
+
+  if(offnav.classList.contains('nav-visible')){
+    gsap.to(offnav, {x: 0, duration: 1})
+  }
+}
+
 bio.addEventListener("mouseenter", ()=> {
   if(bio.classList.contains("darkbg")) {
     bio.classList.remove('darkbg')
@@ -41,18 +58,3 @@ parcour.addEventListener("mouseenter", ()=> {
     bio.classList.remove("blight-shadow")
   }
 })
-
-let navbtn = document.querySelector(".nav-action")
-let offnav = document.querySelector(".offscreen-nav")
-let aboutcontent = document.getElementById("about")
-navbtn.addEventListener('click', togglenav)
-
-function togglenav()  {
-  this.classList.toggle('nav-active')
-  offnav.classList.toggle('nav-visible')
-  aboutcontent.classList.toggle('no-scroll')
-
-  if(offnav.classList.contains('nav-visible')){
-    gsap.to(offnav, {x: 0, duration: 1})
-  }
-}

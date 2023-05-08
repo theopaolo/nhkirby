@@ -47,12 +47,15 @@ tabs:
               - image
             settings:
               fields:
-                class:
+                presentation:
+                  label: Présentation
                   type: select
                   default: center
                   options:
-                    center: Centre
-                    grid: Grid
+                    center: Center
+                    two-img: Deux images
+                    dyp-prev: Dyptique prev
+                    dyp-next: Dyptique next
           video:
             label: Video
             type: url
@@ -65,4 +68,3 @@ tabs:
         size:  small
         layout: cards
         help:  Ajouter des images à la galerie
-

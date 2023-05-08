@@ -1,1 +1,0 @@
-let navbtn=document.querySelector(".nav-action"),offnav=document.querySelector(".offscreen-nav");function togglenav(){this.classList.toggle("nav-active"),offnav.classList.toggle("nav-visible"),offnav.classList.contains("nav-visible")&&gsap.to(offnav,{x:0,duration:1})}navbtn.addEventListener("click",togglenav);

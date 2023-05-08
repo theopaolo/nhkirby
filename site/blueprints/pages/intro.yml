@@ -1,0 +1,7 @@
+title: Intro
+
+fields :
+  cover:
+    label: Intro img
+    type: files
+    multiple: false

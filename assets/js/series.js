@@ -1,15 +1,52 @@
-let next = document.querySelector(".next")
-let prev = document.querySelector(".prev")
-let allimgcount = document.querySelector(".allcount")
-let currentimgcount = document.querySelector(".currentcount")
-let namecount = document.querySelector(".namecount")
+let nextBtn = document.querySelector('.next')
+let prevBtn = document.querySelector('.prev')
 let slides = document.querySelectorAll(".slides")
-let slideCount = slides.length
-let slideIndex = 1
 
-showSlides(slideIndex);
+let slidesCount = slides.length
+let slidesIndex = 1
 
-console.log("sessions item value serie", sessionStorage.getItem("entersite"));
+// Counter
+let allimgcount = document.querySelector(".allcount")
+let firstall = document.querySelector(".firstall")
+let currentimgcount = document.querySelector(".currentcount")
+let twoimgs = document.querySelectorAll(".two-img")
+
+if(window.innerWidth < 768) {
+  if(twoimgs.length > 0) {
+    twoimgs.forEach( function(el) {
+      el.parentNode.removeChild(el);
+    })
+  }
+}
+
+showSlides(slidesIndex);
+
+window.addEventListener("load", nameCountHeight)
+window.addEventListener('resize', nameCountHeight)
+
+function scrollTop() {
+  window.scrollTo(0, 0);
+  console.log('scrollTop');
+}
+
+function nameCountHeight() {
+  let overlay = document.querySelector('.overlay')
+  overlay.style.opacity = 0
+  setTimeout(() => {overlay.style.display = "none"}, 1000)
+
+  if(window.innerWidth < 745){
+    document.body.classList.add('firstSlide')
+    console.log(slidesIndex);
+    if(slidesIndex > 1) {
+      document.body.classList.remove('firstSlide')
+    }
+    if(slidesIndex === 2) {
+      scrollTop()
+    }
+  } else {
+    document.body.classList.remove('firstSlide')
+  }
+}
 
 // Next/previous keys controls
 window.addEventListener("keydown", function(event) {
@@ -36,64 +73,41 @@ window.addEventListener("keydown", function(event) {
 
 // Next/previous controls
 function plusSlides(n) {
-  showSlides(slideIndex += n);
+  showSlides(slidesIndex += n);
+  nameCountHeight()
+  // longtext()
 }
 
-// Thumbnail image controls
-function currentSlide(n) {
-  showSlides(slideIndex = n);
-}
+allimgcount.innerHTML = slidesCount
 
-allimgcount.innerHTML = slideCount
+
+  if(firstall) {
+    firstall.innerHTML = slidesCount
+  }
 
 function showSlides(n) {
   let i;
-  if (n > slideCount) {slideIndex = 1}
-  if (n < 1) {slideIndex = slideCount}
-  for (i = 0; i < slideCount; i++) {
+  if (n > slidesCount) {slidesIndex = 1}
+  if (n < 1) {slidesIndex = slidesCount}
+
+  for (i = 0; i < slidesCount; i++) {
     slides[i].style.display = "none";
   }
 
-  if(slides[slideIndex-1].classList.contains('center')) {
-    slides[slideIndex-1].style.display = "flex";
+  if(slides[slidesIndex-1].classList.contains('center')) {
+    slides[slidesIndex-1].style.display = "flex";
   } else {
-    slides[slideIndex-1].style.display = "grid";
+    slides[slidesIndex-1].style.display = "grid";
   }
-  currentimgcount.innerHTML = slideIndex
-
-  // if( window.innerWidth < 768 ) {
-  //   if( slideIndex -1 >= 1) {
-  //     namecount.style.opacity = 1
-  //   } else {
-  //     namecount.style.opacity = 0
-  //   }
-  // }
+  currentimgcount.innerHTML = slidesIndex
 }
 
-prev.addEventListener('click', ()=>{
-  showSlides(slideIndex += -1)
+prevBtn.addEventListener('click', ()=>{
+  showSlides(slidesIndex += -1)
+  nameCountHeight()
 })
 
-next.addEventListener('click', ()=>{
-  showSlides(slideIndex += 1)
+nextBtn.addEventListener('click', ()=>{
+  showSlides(slidesIndex += 1)
+  nameCountHeight()
 })
-
-const gsap = window.gsap;
-
-let navbtn = document.querySelector(".nav-action")
-let offnav = document.querySelector(".offscreen-nav")
-
-navbtn.addEventListener('click', togglenav)
-
-function togglenav()  {
-  this.classList.toggle('nav-active')
-  offnav.classList.toggle('nav-visible')
-  document.body.classList.toggle('no-scroll')
-  document.documentElement.classList.toggle('no-scroll')
-
-
-  if(offnav.classList.contains('nav-visible')){
-    gsap.to(offnav, {x: 0, duration: 1})
-  }
-
-}

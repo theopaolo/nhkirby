@@ -1,0 +1,17 @@
+title: A propos
+
+columns:
+  - width: 1/2
+    sections:
+    fields:
+      textleft:
+        label: Gauche
+        type: textarea
+        buttons: false
+  - width: 1/2
+    sections:
+    fields:
+      textright:
+        label: Droite
+        type: textarea
+        buttons: false

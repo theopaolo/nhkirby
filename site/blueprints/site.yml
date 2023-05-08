@@ -1,5 +1,43 @@
 title: Site
 
-sections:
-  pages:
-    type: pages
+tabs:
+  # content tab
+  content:
+    label: Content
+    icon: text
+    sections:
+    fields:
+      pages:
+        type: pages
+        layout: cards
+
+  # Config tab
+  config:
+    label: Config
+    icon: cog
+    columns:
+
+      # main
+      left:
+        width: 1/2
+        sections:
+        fields:
+          instagram:
+            type: url
+          vimeo:
+            type: url
+          linktree:
+            type: url
+      right:
+        width: 1/2
+        sections:
+        fields:
+          phone:
+            type: tel
+          mail:
+            type: email
+          fondsonore:
+            label: Fond sonore
+            type: files
+            mutliple: false
+            query: page.audio

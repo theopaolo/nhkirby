@@ -13,3 +13,4 @@ sections:
     type: pages
     status: listed
     templates: serie
+    layout: cards
