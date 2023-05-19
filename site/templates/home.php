@@ -4,7 +4,7 @@
 <div class="container exp">
 
     <div class="namecount z-index-1">
-      <h1 class="z-index-4 expbtn"><a href="<?php $site->url()?>">Nicolas Hermann</a></h1>
+      <h1 class="z-index-4 expbtn"><a href="<?php $kirby->language()->url() ?>">Nicolas Hermann</a></h1>
       <span class="cpar"></span>
       <div class="soundbtn">
         <div class="wave">
@@ -38,7 +38,7 @@
   <?php endforeach ?>
 </section>
 
-<!-- <section class="videos">
+<section class="videos">
   <video class="video" loop muted="muted" crossOrigin="anonymous" playsinline style="display: none;" >
     <source src="https://theopaolo.com/nhvideos/spectreeau.mp4" type='video/mp4' >
   </video>
@@ -69,7 +69,7 @@
   <video class="video" loop muted="muted" crossOrigin="anonymous" playsinline style="display: none;" >
     <source src="https://theopaolo.com/nhvideos/saturne.mp4" type='video/mp4' >
   </video>
-</section> -->
+</section>
 
 <canvas class="webgl"></canvas>
 <div class="loading-bar"> </div>

@@ -16,7 +16,7 @@
           <li>- RESET YOUR IMMERSION BY CLICKING ON "NICOLAS HERMANN"</li>
           <li>- FIND OUT MORE ABOUT HIS WORK BY CLICKING ON "SERIES"</li>
         </ul>
-        <button class="btnintro" data-lang="en">→ enter</button>
+        <a class="btnintro" data-lang="en" href="<?=  $kirby->language('en')->url() ?>">→ enter</a>
       </div>
     </div>
     <div class="fr f-1 flex align-center h-full bg-dark justify-center">
@@ -24,13 +24,13 @@
         <p> FR </p>
         <ul>
           <li>- DOUBLE CLIQUEZ POUR OUVRIR LES IMAGES EN GRAND FORMAT</li>
-          <li>- CLIQUEZ ET DÉPLACEZ POUR TOURNER LA SPHERE</li>
+          <li>- CLIQUEZ ET DÉPLACEZ POUR TOURNER LA SPHERE</li> 
           <li>- SCROLLEZ POUR ZOOMER OU DÉZOOMER</li>
           <li>- RÉINITIALISEZ VOTRE IMMERSION EN CLIQUANT SUR "NICOLAS HERMANN"</li>
           <li>- DÉCOUVREZ SON TRAVAIL PLUS EN PRÉCISION EN CLIQUANT SUR "SÉRIES"</li>
         </ul>
-        <button class="btnintro" data-lang="fr">→ entrer</button>
+        <a class="btnintro" data-lang="fr" href="<?=  $kirby->defaultLanguage()->url() ?>">→ entrer</a>
       </div>
     </div>
   </section>
-</div>
+</div>@

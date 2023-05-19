@@ -1,6 +1,7 @@
 <?php
   return [
     'debug'  => true,
+    'languages' => true,
     'thumbs' => [
       'srcsets' => [
         'default' => [

@@ -44,31 +44,31 @@ function introClick() {
   setTimeout(navTranlater(), 500);
 }
 
-for(let button of btnintro) {
-  button.addEventListener("click", function(){
-    sessionStorage.setItem("lang", this.dataset.lang)
-    if(sessionStorage.getItem("lang") === "en"){
-      document.querySelector('.abouttrans').innerHTML = "about"
-      document.querySelector('.seriestrans').innerHTML = "series"
-    } else {
-      document.querySelector('.abouttrans').innerHTML = "à propos"
-      document.querySelector('.seriestrans').innerHTML = "séries"
-    }
-  })
-}
+// for(let button of btnintro) {
+//   button.addEventListener("click", function(){
+//     sessionStorage.setItem("lang", this.dataset.lang)
+//     if(sessionStorage.getItem("lang") === "en"){
+//       document.querySelector('.abouttrans').innerHTML = "about"
+//       document.querySelector('.seriestrans').innerHTML = "series"
+//     } else {
+//       document.querySelector('.abouttrans').innerHTML = "à propos"
+//       document.querySelector('.seriestrans').innerHTML = "séries"
+//     }
+//   })
+// }
 
-const abouttrans = document.querySelector('.abouttrans');
-const seriestrans = document.querySelector('.seriestrans');
+// const abouttrans = document.querySelector('.abouttrans');
+// const seriestrans = document.querySelector('.seriestrans');
 
-function navTranlater(){
-  if(sessionStorage.getItem("lang") === "en"){
-    abouttrans.innerHTML = "about"
-    seriestrans.innerHTML = "series"
-  } else {
-    abouttrans.innerHTML = "à propos"
-    seriestrans.innerHTML = "séries"
-  }
-}
+// function navTranlater(){
+//   if(sessionStorage.getItem("lang") === "en"){
+//     abouttrans.innerHTML = "about"
+//     seriestrans.innerHTML = "series"
+//   } else {
+//     abouttrans.innerHTML = "à propos"
+//     seriestrans.innerHTML = "séries"
+//   }
+// }
 
 window.addEventListener("DOMContentLoaded", function(){
   if(sessionStorage.getItem("entersite") == "true"){

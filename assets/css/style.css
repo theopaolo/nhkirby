@@ -875,7 +875,8 @@ section picture {
   display: block !important;
 }
 
-.langs button {
+.langs button, .langs a {
+  display: block;
  margin-block-start: 2rem;
 }
 
