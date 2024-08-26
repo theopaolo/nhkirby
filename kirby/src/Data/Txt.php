@@ -19,9 +19,6 @@ class Txt extends Handler
 {
 	/**
 	 * Converts an array to an encoded Kirby txt string
-	 *
-	 * @param mixed $data
-	 * @return string
 	 */
 	public static function encode($data): string
 	{
@@ -42,11 +39,8 @@ class Txt extends Handler
 
 	/**
 	 * Helper for converting the value
-	 *
-	 * @param array|string $value
-	 * @return string
 	 */
-	protected static function encodeValue($value): string
+	protected static function encodeValue(array|string|float $value): string
 	{
 		// avoid problems with arrays
 		if (is_array($value) === true) {
@@ -64,10 +58,6 @@ class Txt extends Handler
 
 	/**
 	 * Helper for converting the key and value to the result string
-	 *
-	 * @param string $key
-	 * @param string $value
-	 * @return string
 	 */
 	protected static function encodeResult(string $key, string $value): string
 	{
@@ -75,11 +65,10 @@ class Txt extends Handler
 		$result = $key . ':';
 
 		// multi-line content
-		if (preg_match('!\R!', $value) === 1) {
-			$result .= "\n\n";
-		} else {
-			$result .= ' ';
-		}
+		$result .= match (preg_match('!\R!', $value)) {
+			1       => "\n\n",
+			default => ' ',
+		};
 
 		$result .= $value;
 
@@ -88,9 +77,6 @@ class Txt extends Handler
 
 	/**
 	 * Parses a Kirby txt string and returns a multi-dimensional array
-	 *
-	 * @param mixed $string
-	 * @return array
 	 */
 	public static function decode($string): array
 	{
@@ -106,27 +92,37 @@ class Txt extends Handler
 			throw new InvalidArgumentException('Invalid TXT data; please pass a string');
 		}
 
-		// remove BOM
-		$string = str_replace("\xEF\xBB\xBF", '', $string);
+		// remove Unicode BOM at the beginning of the file
+		if (Str::startsWith($string, "\xEF\xBB\xBF") === true) {
+			$string = substr($string, 3);
+		}
+
 		// explode all fields by the line separator
 		$fields = preg_split('!\n----\s*\n*!', $string);
+
 		// start the data array
 		$data = [];
 
 		// loop through all fields and add them to the content
 		foreach ($fields as $field) {
-			$pos = strpos($field, ':');
-			$key = str_replace(['-', ' '], '_', strtolower(trim(substr($field, 0, $pos))));
+			if ($pos = strpos($field, ':')) {
+				$key = strtolower(trim(substr($field, 0, $pos)));
+				$key = str_replace(['-', ' '], '_', $key);
 
-			// Don't add fields with empty keys
-			if (empty($key) === true) {
-				continue;
+				// Don't add fields with empty keys
+				if (empty($key) === true) {
+					continue;
+				}
+
+				$value = trim(substr($field, $pos + 1));
+
+				// unescape escaped dividers within a field
+				$data[$key] = preg_replace(
+					'!(?<=\n|^)\\\\----!',
+					'----',
+					$value
+				);
 			}
-
-			$value = trim(substr($field, $pos + 1));
-
-			// unescape escaped dividers within a field
-			$data[$key] = preg_replace('!(?<=\n|^)\\\\----!', '----', $value);
 		}
 
 		return $data;

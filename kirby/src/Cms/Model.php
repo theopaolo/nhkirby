@@ -5,7 +5,7 @@ namespace Kirby\Cms;
 use Kirby\Toolkit\Properties;
 
 /**
- * Foundation for Page, Site, File and User models.
+ * @deprecated 4.0.0 will be removed in Kirby 5.0
  *
  * @package   Kirby Cms
  * @author    Bastian Allgeier <bastian@getkirby.com>
@@ -53,7 +53,7 @@ abstract class Model
 	/**
 	 * Each model must return a unique id
 	 *
-	 * @return string|int
+	 * @return string|null
 	 */
 	public function id()
 	{

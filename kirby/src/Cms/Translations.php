@@ -20,28 +20,11 @@ use Kirby\Filesystem\F;
 class Translations extends Collection
 {
 	/**
-	 * @param string $code
-	 * @return void
+	 * All registered translations methods
 	 */
-	public function start(string $code): void
-	{
-		F::move($this->parent->contentFile('', true), $this->parent->contentFile($code, true));
-	}
+	public static array $methods = [];
 
-	/**
-	 * @param string $code
-	 * @return void
-	 */
-	public function stop(string $code): void
-	{
-		F::move($this->parent->contentFile($code, true), $this->parent->contentFile('', true));
-	}
-
-	/**
-	 * @param array $translations
-	 * @return static
-	 */
-	public static function factory(array $translations)
+	public static function factory(array $translations): static
 	{
 		$collection = new static();
 
@@ -53,12 +36,7 @@ class Translations extends Collection
 		return $collection;
 	}
 
-	/**
-	 * @param string $root
-	 * @param array $inject
-	 * @return static
-	 */
-	public static function load(string $root, array $inject = [])
+	public static function load(string $root, array $inject = []): static
 	{
 		$collection = new static();
 

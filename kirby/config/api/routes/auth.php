@@ -70,13 +70,11 @@ return [
 					$user = $auth->login($email, $password, $long);
 				}
 			} else {
-				if (isset($methods['code']) === true) {
-					$mode = 'login';
-				} elseif (isset($methods['password-reset']) === true) {
-					$mode = 'password-reset';
-				} else {
-					throw new InvalidArgumentException('Login without password is not enabled');
-				}
+				$mode = match (true) {
+					isset($methods['code']) 		  => 'login',
+					isset($methods['password-reset']) => 'password-reset',
+					default => throw new InvalidArgumentException('Login without password is not enabled')
+				};
 
 				$status = $auth->createChallenge($email, $long, $mode);
 			}
@@ -87,13 +85,13 @@ return [
 					'status' => 'ok',
 					'user'   => $this->resolve($user)->view('auth')->toArray()
 				];
-			} else {
-				return [
-					'code'      => 200,
-					'status'    => 'ok',
-					'challenge' => $status->challenge()
-				];
 			}
+
+			return [
+				'code'      => 200,
+				'status'    => 'ok',
+				'challenge' => $status->challenge()
+			];
 		}
 	],
 	[
@@ -102,6 +100,16 @@ return [
 		'auth'    => false,
 		'action'  => function () {
 			$this->kirby()->auth()->logout();
+			return true;
+		}
+	],
+	[
+		'pattern' => 'auth/ping',
+		'method'  => 'POST',
+		'auth'    => false,
+		'action'  => function () {
+			// refresh the session timeout
+			$this->kirby()->session();
 			return true;
 		}
 	],

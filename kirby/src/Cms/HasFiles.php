@@ -2,6 +2,8 @@
 
 namespace Kirby\Cms;
 
+use Kirby\Uuid\Uuid;
+
 /**
  * HasFiles
  *
@@ -15,79 +17,62 @@ trait HasFiles
 {
 	/**
 	 * The Files collection
-	 *
-	 * @var \Kirby\Cms\Files
 	 */
-	protected $files;
+	protected Files|array|null $files = null;
 
 	/**
 	 * Filters the Files collection by type audio
-	 *
-	 * @return \Kirby\Cms\Files
 	 */
-	public function audio()
+	public function audio(): Files
 	{
 		return $this->files()->filter('type', '==', 'audio');
 	}
 
 	/**
 	 * Filters the Files collection by type code
-	 *
-	 * @return \Kirby\Cms\Files
 	 */
-	public function code()
+	public function code(): Files
 	{
 		return $this->files()->filter('type', '==', 'code');
 	}
 
 	/**
-	 * Returns a list of file ids
-	 * for the toArray method of the model
-	 *
-	 * @return array
-	 */
-	protected function convertFilesToArray(): array
-	{
-		return $this->files()->keys();
-	}
-
-	/**
 	 * Creates a new file
 	 *
-	 * @param array $props
-	 * @return \Kirby\Cms\File
+	 * @param bool $move If set to `true`, the source will be deleted
 	 */
-	public function createFile(array $props)
+	public function createFile(array $props, bool $move = false): File
 	{
 		$props = array_merge($props, [
 			'parent' => $this,
 			'url'    => null
 		]);
 
-		return File::create($props);
+		return File::create($props, $move);
 	}
 
 	/**
 	 * Filters the Files collection by type documents
-	 *
-	 * @return \Kirby\Cms\Files
 	 */
-	public function documents()
+	public function documents(): Files
 	{
 		return $this->files()->filter('type', '==', 'document');
 	}
 
 	/**
 	 * Returns a specific file by filename or the first one
-	 *
-	 * @param string|null $filename
-	 * @param string $in
-	 * @return \Kirby\Cms\File|null
 	 */
-	public function file(string $filename = null, string $in = 'files')
-	{
+	public function file(
+		string $filename = null,
+		string $in = 'files'
+	): File|null {
 		if ($filename === null) {
 			return $this->$in()->first();
+		}
+
+		// find by global UUID
+		if (Uuid::is($filename, 'file') === true) {
+			return Uuid::for($filename, $this->$in())->model();
 		}
 
 		if (strpos($filename, '/') !== false) {
@@ -106,12 +91,10 @@ trait HasFiles
 
 	/**
 	 * Returns the Files collection
-	 *
-	 * @return \Kirby\Cms\Files
 	 */
-	public function files()
+	public function files(): Files
 	{
-		if (is_a($this->files, 'Kirby\Cms\Files') === true) {
+		if ($this->files instanceof Files) {
 			return $this->files;
 		}
 
@@ -120,8 +103,6 @@ trait HasFiles
 
 	/**
 	 * Checks if the Files collection has any audio files
-	 *
-	 * @return bool
 	 */
 	public function hasAudio(): bool
 	{
@@ -130,8 +111,6 @@ trait HasFiles
 
 	/**
 	 * Checks if the Files collection has any code files
-	 *
-	 * @return bool
 	 */
 	public function hasCode(): bool
 	{
@@ -140,8 +119,6 @@ trait HasFiles
 
 	/**
 	 * Checks if the Files collection has any document files
-	 *
-	 * @return bool
 	 */
 	public function hasDocuments(): bool
 	{
@@ -150,8 +127,6 @@ trait HasFiles
 
 	/**
 	 * Checks if the Files collection has any files
-	 *
-	 * @return bool
 	 */
 	public function hasFiles(): bool
 	{
@@ -160,8 +135,6 @@ trait HasFiles
 
 	/**
 	 * Checks if the Files collection has any images
-	 *
-	 * @return bool
 	 */
 	public function hasImages(): bool
 	{
@@ -170,8 +143,6 @@ trait HasFiles
 
 	/**
 	 * Checks if the Files collection has any videos
-	 *
-	 * @return bool
 	 */
 	public function hasVideos(): bool
 	{
@@ -180,21 +151,16 @@ trait HasFiles
 
 	/**
 	 * Returns a specific image by filename or the first one
-	 *
-	 * @param string|null $filename
-	 * @return \Kirby\Cms\File|null
 	 */
-	public function image(string $filename = null)
+	public function image(string $filename = null): File|null
 	{
 		return $this->file($filename, 'images');
 	}
 
 	/**
 	 * Filters the Files collection by type image
-	 *
-	 * @return \Kirby\Cms\Files
 	 */
-	public function images()
+	public function images(): Files
 	{
 		return $this->files()->filter('type', '==', 'image');
 	}
@@ -202,10 +168,9 @@ trait HasFiles
 	/**
 	 * Sets the Files collection
 	 *
-	 * @param \Kirby\Cms\Files|null $files
 	 * @return $this
 	 */
-	protected function setFiles(array $files = null)
+	protected function setFiles(array $files = null): static
 	{
 		if ($files !== null) {
 			$this->files = Files::factory($files, $this);
@@ -216,10 +181,8 @@ trait HasFiles
 
 	/**
 	 * Filters the Files collection by type videos
-	 *
-	 * @return \Kirby\Cms\Files
 	 */
-	public function videos()
+	public function videos(): Files
 	{
 		return $this->files()->filter('type', '==', 'video');
 	}

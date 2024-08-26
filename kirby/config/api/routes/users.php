@@ -1,11 +1,14 @@
 <?php
 
+use Kirby\Exception\Exception;
 use Kirby\Filesystem\F;
+use Kirby\Toolkit\Str;
 
 /**
  * User Routes
  */
 return [
+	// @codeCoverageIgnoreStart
 	[
 		'pattern' => 'users',
 		'method'  => 'GET',
@@ -26,9 +29,9 @@ return [
 		'action'  => function () {
 			if ($this->requestMethod() === 'GET') {
 				return $this->users()->search($this->requestQuery('q'));
-			} else {
-				return $this->users()->query($this->requestBody());
 			}
+
+			return $this->users()->query($this->requestBody());
 		}
 	],
 	[
@@ -79,17 +82,38 @@ return [
 		],
 		'method'  => 'POST',
 		'action'  => function (string $id) {
-			if ($avatar = $this->user($id)->avatar()) {
-				$avatar->delete();
-			}
+			return $this->upload(
+				function ($source, $filename) use ($id) {
+					$type = F::type($filename);
+					if ($type !== 'image') {
+						throw new Exception([
+							'key'  => 'file.type.invalid',
+							'data' => compact('type')
+						]);
+					}
 
-			return $this->upload(function ($source, $filename) use ($id) {
-				return $this->user($id)->createFile([
-					'filename' => 'profile.' . F::extension($filename),
-					'template' => 'avatar',
-					'source'   => $source
-				]);
-			}, $single = true);
+					$mime = F::mime($source);
+					if (Str::startsWith($mime, 'image/') !== true) {
+						throw new Exception([
+							'key'  => 'file.mime.invalid',
+							'data' => compact('mime')
+						]);
+					}
+
+					// delete the old avatar
+					$this->user($id)->avatar()?->delete();
+
+					$props = [
+						'filename' => 'profile.' . F::extension($filename),
+						'template' => 'avatar',
+						'source'   => $source
+					];
+
+					// move the source file from the temp dir
+					return $this->user($id)->createFile($props, true);
+				},
+				single: true
+			);
 		}
 	],
 	// @codeCoverageIgnoreEnd
@@ -184,6 +208,16 @@ return [
 	],
 	[
 		'pattern' => [
+			'(account)/fields/(:any)/(:all?)',
+			'users/(:any)/fields/(:any)/(:all?)',
+		],
+		'method'  => 'ALL',
+		'action'  => function (string $id, string $fieldName, string|null $path = null) {
+			return $this->fieldApi($this->user($id), $fieldName, $path);
+		}
+	],
+	[
+		'pattern' => [
 			'(account)/sections/(:any)',
 			'users/(:any)/sections/(:any)',
 		],
@@ -196,12 +230,13 @@ return [
 	],
 	[
 		'pattern' => [
-			'(account)/fields/(:any)/(:all?)',
-			'users/(:any)/fields/(:any)/(:all?)',
+			'(account)/sections/(:any)/(:all?)',
+			'users/(:any)/sections/(:any)/(:all?)',
 		],
 		'method'  => 'ALL',
-		'action'  => function (string $id, string $fieldName, string $path = null) {
-			return $this->fieldApi($this->user($id), $fieldName, $path);
+		'action'  => function (string $id, string $sectionName, string|null $path = null) {
+			return $this->sectionApi($this->user($id), $sectionName, $path);
 		}
 	],
+	// @codeCoverageIgnoreEnd
 ];

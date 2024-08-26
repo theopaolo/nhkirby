@@ -3,6 +3,8 @@
 namespace Kirby\Image;
 
 use Exception;
+use Kirby\Image\Darkroom\GdLib;
+use Kirby\Image\Darkroom\ImageMagick;
 
 /**
  * A wrapper around resizing and cropping
@@ -16,23 +18,14 @@ use Exception;
  */
 class Darkroom
 {
-	public static $types = [
-		'gd' => 'Kirby\Image\Darkroom\GdLib',
-		'im' => 'Kirby\Image\Darkroom\ImageMagick'
+	public static array $types = [
+		'gd' => GdLib::class,
+		'im' => ImageMagick::class
 	];
 
-	/**
-	 * @var array
-	 */
-	protected $settings = [];
-
-	/**
-	 * Darkroom constructor
-	 *
-	 * @param array $settings
-	 */
-	public function __construct(array $settings = [])
-	{
+	public function __construct(
+		protected array $settings = []
+	) {
 		$this->settings = array_merge($this->defaults(), $settings);
 	}
 
@@ -40,12 +33,9 @@ class Darkroom
 	 * Creates a new Darkroom instance for the given
 	 * type/driver
 	 *
-	 * @param string $type
-	 * @param array $settings
-	 * @return mixed
 	 * @throws \Exception
 	 */
-	public static function factory(string $type, array $settings = [])
+	public static function factory(string $type, array $settings = []): object
 	{
 		if (isset(static::$types[$type]) === false) {
 			throw new Exception('Invalid Darkroom type');
@@ -57,8 +47,6 @@ class Darkroom
 
 	/**
 	 * Returns the default thumb settings
-	 *
-	 * @return array
 	 */
 	protected function defaults(): array
 	{
@@ -72,15 +60,13 @@ class Darkroom
 			'quality'     => 90,
 			'scaleHeight' => null,
 			'scaleWidth'  => null,
+			'sharpen'     => null,
 			'width'       => null,
 		];
 	}
 
 	/**
 	 * Normalizes all thumb options
-	 *
-	 * @param array $options
-	 * @return array
 	 */
 	protected function options(array $options = []): array
 	{
@@ -108,9 +94,12 @@ class Darkroom
 			unset($options['bw']);
 		}
 
-		if ($options['quality'] === null) {
-			$options['quality'] = $this->settings['quality'];
+		// normalize the sharpen option
+		if ($options['sharpen'] === true) {
+			$options['sharpen'] = 50;
 		}
+
+		$options['quality'] ??= $this->settings['quality'];
 
 		return $options;
 	}
@@ -119,28 +108,30 @@ class Darkroom
 	 * Calculates the dimensions of the final thumb based
 	 * on the given options and returns a full array with
 	 * all the final options to be used for the image generator
-	 *
-	 * @param string $file
-	 * @param array $options
-	 * @return array
 	 */
-	public function preprocess(string $file, array $options = [])
+	public function preprocess(string $file, array $options = []): array
 	{
 		$options = $this->options($options);
 		$image   = new Image($file);
 
-		$dimensions      = $image->dimensions();
-		$thumbDimensions = $dimensions->thumb($options);
+		$options['sourceWidth']  = $image->width();
+		$options['sourceHeight'] = $image->height();
 
-		$sourceWidth  = $image->width();
-		$sourceHeight = $image->height();
+		$dimensions        = $image->dimensions();
+		$thumbDimensions   = $dimensions->thumb($options);
 
 		$options['width']  = $thumbDimensions->width();
 		$options['height'] = $thumbDimensions->height();
 
 		// scale ratio compared to the source dimensions
-		$options['scaleWidth']  = $sourceWidth ? $options['width'] / $sourceWidth : null;
-		$options['scaleHeight'] = $sourceHeight ? $options['height'] / $sourceHeight : null;
+		$options['scaleWidth'] = Focus::ratio(
+			$options['width'],
+			$options['sourceWidth']
+		);
+		$options['scaleHeight'] = Focus::ratio(
+			$options['height'],
+			$options['sourceHeight']
+		);
 
 		return $options;
 	}
@@ -148,10 +139,6 @@ class Darkroom
 	/**
 	 * This method must be replaced by the driver to run the
 	 * actual image processing job.
-	 *
-	 * @param string $file
-	 * @param array $options
-	 * @return array
 	 */
 	public function process(string $file, array $options = []): array
 	{

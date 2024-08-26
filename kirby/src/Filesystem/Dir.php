@@ -4,6 +4,7 @@ namespace Kirby\Filesystem;
 
 use Exception;
 use Kirby\Cms\App;
+use Kirby\Cms\Helpers;
 use Kirby\Cms\Page;
 use Kirby\Toolkit\Str;
 use Throwable;
@@ -30,10 +31,8 @@ class Dir
 {
 	/**
 	 * Ignore when scanning directories
-	 *
-	 * @var array
 	 */
-	public static $ignore = [
+	public static array $ignore = [
 		'.',
 		'..',
 		'.DS_Store',
@@ -45,19 +44,21 @@ class Dir
 		'@eaDir'
 	];
 
-	public static $numSeparator = '_';
+	public static string $numSeparator = '_';
 
 	/**
 	 * Copy the directory to a new destination
 	 *
-	 * @param string $dir
-	 * @param string $target
-	 * @param bool $recursive
-	 * @param array $ignore
-	 * @return bool
+	 * @param array|false $ignore List of full paths to skip during copying
+	 *                            or `false` to copy all files, including
+	 *                            those listed in `Dir::$ignore`
 	 */
-	public static function copy(string $dir, string $target, bool $recursive = true, array $ignore = []): bool
-	{
+	public static function copy(
+		string $dir,
+		string $target,
+		bool $recursive = true,
+		array|false $ignore = []
+	): bool {
 		if (is_dir($dir) === false) {
 			throw new Exception('The directory "' . $dir . '" does not exist');
 		}
@@ -70,10 +71,13 @@ class Dir
 			throw new Exception('The target directory "' . $target . '" could not be created');
 		}
 
-		foreach (static::read($dir) as $name) {
+		foreach (static::read($dir, $ignore === false ? [] : null) as $name) {
 			$root = $dir . '/' . $name;
 
-			if (in_array($root, $ignore) === true) {
+			if (
+				is_array($ignore) === true &&
+				in_array($root, $ignore) === true
+			) {
 				continue;
 			}
 
@@ -91,15 +95,14 @@ class Dir
 
 	/**
 	 * Get all subdirectories
-	 *
-	 * @param string $dir
-	 * @param array $ignore
-	 * @param bool $absolute
-	 * @return array
 	 */
-	public static function dirs(string $dir, array $ignore = null, bool $absolute = false): array
-	{
-		$result = array_values(array_filter(static::read($dir, $ignore, true), 'is_dir'));
+	public static function dirs(
+		string $dir,
+		array|null $ignore = null,
+		bool $absolute = false
+	): array {
+		$scan   = static::read($dir, $ignore, true);
+		$result = array_values(array_filter($scan, 'is_dir'));
 
 		if ($absolute !== true) {
 			$result = array_map('basename', $result);
@@ -110,9 +113,6 @@ class Dir
 
 	/**
 	 * Checks if the directory exists on disk
-	 *
-	 * @param string $dir
-	 * @return bool
 	 */
 	public static function exists(string $dir): bool
 	{
@@ -121,15 +121,14 @@ class Dir
 
 	/**
 	 * Get all files
-	 *
-	 * @param string $dir
-	 * @param array $ignore
-	 * @param bool $absolute
-	 * @return array
 	 */
-	public static function files(string $dir, array $ignore = null, bool $absolute = false): array
-	{
-		$result = array_values(array_filter(static::read($dir, $ignore, true), 'is_file'));
+	public static function files(
+		string $dir,
+		array|null $ignore = null,
+		bool $absolute = false
+	): array {
+		$scan   = static::read($dir, $ignore, true);
+		$result = array_values(array_filter($scan, 'is_file'));
 
 		if ($absolute !== true) {
 			$result = array_map('basename', $result);
@@ -141,25 +140,39 @@ class Dir
 	/**
 	 * Read the directory and all subdirectories
 	 *
-	 * @param string $dir
-	 * @param bool $recursive
-	 * @param array $ignore
-	 * @param string $path
-	 * @return array
+	 * @todo Remove support for `$ignore = null` in a major release
+	 * @param array|false|null $ignore Array of absolut file paths;
+	 *                                 `false` to disable `Dir::$ignore` list
+	 *                                 (passing null is deprecated)
 	 */
-	public static function index(string $dir, bool $recursive = false, array $ignore = null, string $path = null)
-	{
+	public static function index(
+		string $dir,
+		bool $recursive = false,
+		array|false|null $ignore = [],
+		string $path = null
+	): array {
 		$result = [];
 		$dir    = realpath($dir);
-		$items  = static::read($dir);
+		$items  = static::read($dir, $ignore === false ? [] : null);
 
 		foreach ($items as $item) {
-			$root     = $dir . '/' . $item;
+			$root = $dir . '/' . $item;
+
+			if (
+				is_array($ignore) === true &&
+				in_array($root, $ignore) === true
+			) {
+				continue;
+			}
+
 			$entry    = $path !== null ? $path . '/' . $item : $item;
 			$result[] = $entry;
 
 			if ($recursive === true && is_dir($root) === true) {
-				$result = array_merge($result, static::index($root, true, $ignore, $entry));
+				$result = [
+					...$result,
+					...static::index($root, true, $ignore, $entry)
+				];
 			}
 		}
 
@@ -168,9 +181,6 @@ class Dir
 
 	/**
 	 * Checks if the folder has any contents
-	 *
-	 * @param string $dir
-	 * @return bool
 	 */
 	public static function isEmpty(string $dir): bool
 	{
@@ -179,9 +189,6 @@ class Dir
 
 	/**
 	 * Checks if the directory is readable
-	 *
-	 * @param string $dir
-	 * @return bool
 	 */
 	public static function isReadable(string $dir): bool
 	{
@@ -190,9 +197,6 @@ class Dir
 
 	/**
 	 * Checks if the directory is writable
-	 *
-	 * @param string $dir
-	 * @return bool
 	 */
 	public static function isWritable(string $dir): bool
 	{
@@ -209,167 +213,156 @@ class Dir
 	 * Don't use outside the Cms context.
 	 *
 	 * @internal
-	 *
-	 * @param string $dir
-	 * @param string $contentExtension
-	 * @param array|null $contentIgnore
-	 * @param bool $multilang
-	 * @return array
 	 */
-	public static function inventory(string $dir, string $contentExtension = 'txt', array $contentIgnore = null, bool $multilang = false): array
-	{
-		$dir = realpath($dir);
-
+	public static function inventory(
+		string $dir,
+		string $contentExtension = 'txt',
+		array|null $contentIgnore = null,
+		bool $multilang = false
+	): array {
 		$inventory = [
 			'children' => [],
 			'files'    => [],
 			'template' => 'default',
 		];
 
+		$dir = realpath($dir);
+
 		if ($dir === false) {
 			return $inventory;
 		}
 
-		$items = static::read($dir, $contentIgnore);
-
 		// a temporary store for all content files
 		$content = [];
 
-		// sort all items naturally to avoid sorting issues later
+		// read and sort all items naturally to avoid sorting issues later
+		$items = static::read($dir, $contentIgnore);
 		natsort($items);
 
+		// loop through all directory items and collect all relevant information
 		foreach ($items as $item) {
-
-			// ignore all items with a leading dot
+			// ignore all items with a leading dot or underscore
 			if (in_array(substr($item, 0, 1), ['.', '_']) === true) {
 				continue;
 			}
 
 			$root = $dir . '/' . $item;
 
+			// collect all directories as children
 			if (is_dir($root) === true) {
-
-				// extract the slug and num of the directory
-				if (preg_match('/^([0-9]+)' . static::$numSeparator . '(.*)$/', $item, $match)) {
-					$num  = (int)$match[1];
-					$slug = $match[2];
-				} else {
-					$num  = null;
-					$slug = $item;
-				}
-
-				$inventory['children'][] = [
-					'dirname' => $item,
-					'model'   => null,
-					'num'     => $num,
-					'root'    => $root,
-					'slug'    => $slug,
-				];
-			} else {
-				$extension = pathinfo($item, PATHINFO_EXTENSION);
-
-				switch ($extension) {
-					case 'htm':
-					case 'html':
-					case 'php':
-						// don't track those files
-						break;
-					case $contentExtension:
-						$content[] = pathinfo($item, PATHINFO_FILENAME);
-						break;
-					default:
-						$inventory['files'][$item] = [
-							'filename'  => $item,
-							'extension' => $extension,
-							'root'      => $root,
-						];
-				}
-			}
-		}
-
-		// remove the language codes from all content filenames
-		if ($multilang === true) {
-			foreach ($content as $key => $filename) {
-				$content[$key] = pathinfo($filename, PATHINFO_FILENAME);
+				$inventory['children'][] = static::inventoryChild(
+					$item,
+					$root,
+					$contentExtension,
+					$multilang
+				);
+				continue;
 			}
 
-			$content = array_unique($content);
+			$extension = pathinfo($item, PATHINFO_EXTENSION);
+
+			// don't track files with these extensions
+			if (in_array($extension, ['htm', 'html', 'php']) === true) {
+				continue;
+			}
+
+			// collect all content files separately,
+			// not as inventory entries
+			if ($extension === $contentExtension) {
+				$filename = pathinfo($item, PATHINFO_FILENAME);
+
+				// remove the language codes from all content filenames
+				if ($multilang === true) {
+					$filename = pathinfo($filename, PATHINFO_FILENAME);
+				}
+
+				$content[] = $filename;
+				continue;
+			}
+
+			// collect all other files
+			$inventory['files'][$item] = [
+				'filename'  => $item,
+				'extension' => $extension,
+				'root'      => $root,
+			];
 		}
 
-		$inventory = static::inventoryContent($inventory, $content);
-		$inventory = static::inventoryModels($inventory, $contentExtension, $multilang);
+		$content = array_unique($content);
+
+		$inventory['template'] = static::inventoryTemplate(
+			$content,
+			$inventory['files']
+		);
 
 		return $inventory;
 	}
 
 	/**
-	 * Take all content files,
-	 * remove those who are meta files and
-	 * detect the main content file
-	 *
-	 * @param array $inventory
-	 * @param array $content
-	 * @return array
+	 * Collect information for a child for the inventory
 	 */
-	protected static function inventoryContent(array $inventory, array $content): array
-	{
-
-		// filter meta files from the content file
-		if (empty($content) === true) {
-			$inventory['template'] = 'default';
-			return $inventory;
+	protected static function inventoryChild(
+		string $item,
+		string $root,
+		string $contentExtension = 'txt',
+		bool $multilang = false
+	): array {
+		// extract the slug and num of the directory
+		if ($separator = strpos($item, static::$numSeparator)) {
+			$num  = (int)substr($item, 0, $separator);
+			$slug = substr($item, $separator + 1);
 		}
 
-		foreach ($content as $contentName) {
+		// determine the model
+		if (empty(Page::$models) === false) {
+			if ($multilang === true) {
+				$code = App::instance()->defaultLanguage()->code();
+				$contentExtension = $code . '.' . $contentExtension;
+			}
 
-			// could be a meta file. i.e. cover.jpg
-			if (isset($inventory['files'][$contentName]) === true) {
+			// look if a content file can be found
+			// for any of the available models
+			foreach (Page::$models as $modelName => $modelClass) {
+				if (is_file($root . '/' . $modelName . '.' . $contentExtension) === true) {
+					$model = $modelName;
+					break;
+				}
+			}
+		}
+
+		return [
+			'dirname' => $item,
+			'model'   => $model ?? null,
+			'num'     => $num ?? null,
+			'root'    => $root,
+			'slug'    => $slug ?? $item,
+		];
+	}
+
+	/**
+	 * Determines the main template for the inventory
+	 * from all collected content files, ignore file meta files
+	 */
+	protected static function inventoryTemplate(
+		array $content,
+		array $files,
+	): string {
+		foreach ($content as $name) {
+			// is a meta file corresponding to an actual file, i.e. cover.jpg
+			if (isset($files[$name]) === true) {
 				continue;
 			}
 
 			// it's most likely the template
-			$inventory['template'] = $contentName;
+			// (will overwrite and use the last match for historic reasons)
+			$template = $name;
 		}
 
-		return $inventory;
-	}
-
-	/**
-	 * Go through all inventory children
-	 * and inject a model for each
-	 *
-	 * @param array $inventory
-	 * @param string $contentExtension
-	 * @param bool $multilang
-	 * @return array
-	 */
-	protected static function inventoryModels(array $inventory, string $contentExtension, bool $multilang = false): array
-	{
-		// inject models
-		if (empty($inventory['children']) === false && empty(Page::$models) === false) {
-			if ($multilang === true) {
-				$contentExtension = App::instance()->defaultLanguage()->code() . '.' . $contentExtension;
-			}
-
-			foreach ($inventory['children'] as $key => $child) {
-				foreach (Page::$models as $modelName => $modelClass) {
-					if (file_exists($child['root'] . '/' . $modelName . '.' . $contentExtension) === true) {
-						$inventory['children'][$key]['model'] = $modelName;
-						break;
-					}
-				}
-			}
-		}
-
-		return $inventory;
+		return $template ?? 'default';
 	}
 
 	/**
 	 * Create a (symbolic) link to a directory
-	 *
-	 * @param string $source
-	 * @param string $link
-	 * @return bool
 	 */
 	public static function link(string $source, string $link): bool
 	{
@@ -385,7 +378,7 @@ class Dir
 
 		try {
 			return symlink($source, $link) === true;
-		} catch (Throwable $e) {
+		} catch (Throwable) {
 			return false;
 		}
 	}
@@ -414,17 +407,21 @@ class Dir
 
 		$parent = dirname($dir);
 
-		if ($recursive === true) {
-			if (is_dir($parent) === false) {
-				static::make($parent, true);
-			}
+		if ($recursive === true && is_dir($parent) === false) {
+			static::make($parent, true);
 		}
 
 		if (is_writable($parent) === false) {
 			throw new Exception(sprintf('The directory "%s" cannot be created', $dir));
 		}
 
-		return mkdir($dir);
+		return Helpers::handleErrors(
+			fn (): bool => mkdir($dir),
+			// if the dir was already created (race condition),
+			fn (int $errno, string $errstr): bool => Str::endsWith($errstr, 'File exists'),
+			// consider it a success
+			true
+		);
 	}
 
 	/**
@@ -432,22 +429,22 @@ class Dir
 	 * subfolders have been modified for the last time.
 	 *
 	 * @param string $dir The path of the directory
-	 * @param string $format
-	 * @param string $handler
-	 * @return int|string
+	 * @param 'date'|'intl'|'strftime'|null $handler Custom date handler or `null`
+	 *                                               for the globally configured one
 	 */
-	public static function modified(string $dir, string $format = null, string $handler = 'date')
-	{
+	public static function modified(
+		string $dir,
+		string $format = null,
+		string|null $handler = null
+	): int|string {
 		$modified = filemtime($dir);
 		$items    = static::read($dir);
 
 		foreach ($items as $item) {
-			if (is_file($dir . '/' . $item) === true) {
-				$newModified = filemtime($dir . '/' . $item);
-			} else {
-				$newModified = static::modified($dir . '/' . $item);
-			}
-
+			$newModified = match (is_file($dir . '/' . $item)) {
+				true  => filemtime($dir . '/' . $item),
+				false => static::modified($dir . '/' . $item)
+			};
 			$modified = ($newModified > $modified) ? $newModified : $modified;
 		}
 
@@ -482,13 +479,14 @@ class Dir
 	 * Returns a nicely formatted size of all the contents of the folder
 	 *
 	 * @param string $dir The path of the directory
-	 * @param string|null|false $locale Locale for number formatting,
+	 * @param string|false|null $locale Locale for number formatting,
 	 *                                  `null` for the current locale,
 	 *                                  `false` to disable number formatting
-	 * @return mixed
 	 */
-	public static function niceSize(string $dir, $locale = null)
-	{
+	public static function niceSize(
+		string $dir,
+		string|false|null $locale = null
+	): string {
 		return F::niceSize(static::size($dir), $locale);
 	}
 
@@ -501,8 +499,11 @@ class Dir
 	 * @param bool $absolute If true, the full path for each item will be returned
 	 * @return array An array of filenames
 	 */
-	public static function read(string $dir, array $ignore = null, bool $absolute = false): array
-	{
+	public static function read(
+		string $dir,
+		array|null $ignore = null,
+		bool $absolute = false
+	): array {
 		if (is_dir($dir) === false) {
 			return [];
 		}
@@ -524,9 +525,6 @@ class Dir
 
 	/**
 	 * Removes a folder including all containing files and folders
-	 *
-	 * @param string $dir
-	 * @return bool
 	 */
 	public static function remove(string $dir): bool
 	{
@@ -562,9 +560,8 @@ class Dir
 	 *
 	 * @param string $dir The path of the directory
 	 * @param bool $recursive Include all subfolders and their files
-	 * @return mixed
 	 */
-	public static function size(string $dir, bool $recursive = true)
+	public static function size(string $dir, bool $recursive = true): int|false
 	{
 		if (is_dir($dir) === false) {
 			return false;
@@ -586,10 +583,6 @@ class Dir
 	/**
 	 * Checks if the directory or any subdirectory has been
 	 * modified after the given timestamp
-	 *
-	 * @param string $dir
-	 * @param int $time
-	 * @return bool
 	 */
 	public static function wasModifiedAfter(string $dir, int $time): bool
 	{
@@ -606,7 +599,10 @@ class Dir
 				return true;
 			}
 
-			if (is_dir($subdir) === true && static::wasModifiedAfter($subdir, $time) === true) {
+			if (
+				is_dir($subdir) === true &&
+				static::wasModifiedAfter($subdir, $time) === true
+			) {
 				return true;
 			}
 		}

@@ -3,6 +3,7 @@
 namespace Kirby\Cms;
 
 use Kirby\Filesystem\F;
+use Kirby\Filesystem\Mime;
 use Kirby\Toolkit\Str;
 
 /**
@@ -20,10 +21,8 @@ class FileBlueprint extends Blueprint
 	/**
 	 * `true` if the default accepted
 	 * types are being used
-	 *
-	 * @var bool
 	 */
-	protected $defaultTypes = false;
+	protected bool $defaultTypes = false;
 
 	public function __construct(array $props)
 	{
@@ -34,12 +33,15 @@ class FileBlueprint extends Blueprint
 			$this->props['options'] ?? true,
 			// defaults
 			[
-				'changeName' => null,
-				'create'     => null,
-				'delete'     => null,
-				'read'       => null,
-				'replace'    => null,
-				'update'     => null,
+				'access'         => null,
+				'changeName'     => null,
+				'changeTemplate' => null,
+				'create'     	 => null,
+				'delete'     	 => null,
+				'list'     	     => null,
+				'read'       	 => null,
+				'replace'    	 => null,
+				'update'     	 => null,
 			]
 		);
 
@@ -47,9 +49,6 @@ class FileBlueprint extends Blueprint
 		$this->props['accept'] = $this->normalizeAccept($this->props['accept'] ?? []);
 	}
 
-	/**
-	 * @return array
-	 */
 	public function accept(): array
 	{
 		return $this->props['accept'];
@@ -59,7 +58,8 @@ class FileBlueprint extends Blueprint
 	 * Returns the list of all accepted MIME types for
 	 * file upload or `*` if all MIME types are allowed
 	 *
-	 * @return string
+	 * @deprecated 4.2.0 Use `acceptAttribute` instead
+	 * @todo 5.0.0 Remove method
 	 */
 	public function acceptMime(): string
 	{
@@ -81,7 +81,10 @@ class FileBlueprint extends Blueprint
 
 			if (is_array($accept['extension']) === true) {
 				// determine the main MIME type for each extension
-				$restrictions[] = array_map(['Kirby\Filesystem\Mime', 'fromExtension'], $accept['extension']);
+				$restrictions[] = array_map(
+					[Mime::class, 'fromExtension'],
+					$accept['extension']
+				);
 			}
 
 			if (is_array($accept['type']) === true) {
@@ -89,7 +92,10 @@ class FileBlueprint extends Blueprint
 				$mimes = [];
 				foreach ($accept['type'] as $type) {
 					if ($extensions = F::typeToExtensions($type)) {
-						$mimes[] = array_map(['Kirby\Filesystem\Mime', 'fromExtension'], $extensions);
+						$mimes[] = array_map(
+							[Mime::class, 'fromExtension'],
+							$extensions
+						);
 					}
 				}
 
@@ -114,24 +120,84 @@ class FileBlueprint extends Blueprint
 	}
 
 	/**
-	 * @param mixed $accept
-	 * @return array
+	 * Returns the list of all accepted file extensions
+	 * for file upload or `*` if all extensions are allowed
+	 *
+	 * If a MIME type is specified in the blueprint, the `extension` and `type` options are ignored for the browser.
+	 * Extensions and types, however, are still used to validate an uploaded file on the server.
+	 * This behavior might change in the future to better represent which file extensions are actually allowed.
+	 *
+	 * If no MIME type is specified, the intersection between manually defined extensions and the Kirby "file types" is returned.
+	 * If the intersection is empty, an empty string is returned.
+	 * This behavior might change in the future to instead return the union of `mime`, `extension` and `type`.
+	 *
+	 * @since 4.2.0
 	 */
-	protected function normalizeAccept($accept = null): array
+	public function acceptAttribute(): string
 	{
-		if (is_string($accept) === true) {
-			$accept = [
-				'mime' => $accept
-			];
-		} elseif ($accept === true) {
-			// explicitly no restrictions at all
-			$accept = [
-				'mime' => null
-			];
-		} elseif (empty($accept) === true) {
-			// no custom restrictions
-			$accept = [];
+		// don't disclose the specific default types
+		if ($this->defaultTypes === true) {
+			return '*';
 		}
+
+		$accept = $this->accept();
+
+		// get extensions from "mime" option
+		if (is_array($accept['mime']) === true) {
+			// determine the extensions for each MIME type
+			$extensions = array_map(
+				fn ($pattern) => Mime::toExtensions($pattern, true),
+				$accept['mime']
+			);
+
+			$fromMime = array_unique(array_merge(...array_values($extensions)));
+
+			// return early to ignore the other options
+			return implode(',', array_map(fn ($ext) => ".$ext", $fromMime));
+		}
+
+		$restrictions = [];
+
+		// get extensions from "type" option
+		if (is_array($accept['type']) === true) {
+			$extensions = array_map(
+				fn ($type) => F::typeToExtensions($type) ?? [],
+				$accept['type']
+			);
+
+			$fromType = array_merge(...array_values($extensions));
+			$restrictions[] = $fromType;
+		}
+
+		// get extensions from "extension" option
+		if (is_array($accept['extension']) === true) {
+			$restrictions[] = $accept['extension'];
+		}
+
+		// intersect all restrictions
+		$list = match (count($restrictions)) {
+			0 => [],
+			1 => $restrictions[0],
+			default => array_intersect(...$restrictions)
+		};
+
+		$list = array_unique($list);
+
+		// format the list to include a leading dot on each extension
+		return implode(',', array_map(fn ($ext) => ".$ext", $list));
+	}
+
+	protected function normalizeAccept(mixed $accept = null): array
+	{
+		$accept = match (true) {
+			is_string($accept) 		=> ['mime' => $accept],
+			// explicitly no restrictions at all
+			$accept === true 		=> ['mime' => null],
+			// no custom restrictions
+			empty($accept) === true => [],
+			// custom restrictions
+			default 				=> $accept
+		};
 
 		$accept = array_change_key_case($accept);
 

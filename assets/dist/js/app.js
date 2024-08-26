@@ -532,432 +532,314 @@ function hmrAcceptRun(bundle, id) {
 }
 
 },{}],"6Bv9J":[function(require,module,exports) {
+// Imports
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 var _three = require("three");
-var _trackballControlsJs = require("three/examples/jsm/controls/TrackballControls.js");
 var _swup = require("swup");
 var _swupDefault = parcelHelpers.interopDefault(_swup);
+var _scriptManager = require("./scriptManager");
+var _swupManager = require("./swupManager");
+var _mouseHandlerJs = require("./modules/mouseHandler.js");
+var _lightboxHandlerJs = require("./modules/lightboxHandler.js");
+var _controlsManagerJs = require("./modules/controlsManager.js");
+// Constants
 const gsap = window.gsap;
-const swup = new (0, _swupDefault.default)();
-const raycaster = new _three.Raycaster();
-function initScripts() {
-    if (document.querySelector(".bio")) {
-        let bio = document.querySelector(".bio");
-        let parcour = document.querySelector(".parcour");
-        bio.addEventListener("mouseenter", ()=>{
-            if (bio.classList.contains("darkbg")) {
-                bio.classList.remove("darkbg");
-                // bio.classList.remove("blight-shadow")
-                parcour.classList.add("darkbg");
-            // parcour.classList.add("light-shadow")
-            } else {
-                bio.classList.add("darkbg");
-                // bio.classList.add('blight-shadow')
-                parcour.classList.remove("darkbg");
-            // parcour.classList.remove("light-shadow")
-            }
-        });
-        parcour.addEventListener("mouseenter", ()=>{
-            if (parcour.classList.contains("darkbg")) {
-                parcour.classList.remove("darkbg");
-                // parcour.classList.remove("light-shadow")
-                bio.classList.add("darkbg");
-            // bio.classList.add('blight-shadow')
-            } else {
-                parcour.classList.add("darkbg");
-                // parcour.classList.add("light-shadow")
-                bio.classList.remove("darkbg");
-            // bio.classList.remove("blight-shadow")
-            }
-        });
-        let navbtn = document.querySelector(".nav-action");
-        let offnav = document.querySelector(".offscreen-nav");
-        navbtn.addEventListener("click", togglenav);
-        function togglenav() {
-            console.log("clicked toggle nav");
-            this.classList.toggle("nav-active");
-            offnav.classList.toggle("nav-visible");
-            if (offnav.classList.contains("nav-visible")) gsap.to(offnav, {
-                x: 0,
-                duration: 1
-            });
-        }
-    }
-}
-initScripts();
-swup.on("contentReplaced", initScripts);
-/**
- * Base
- */ // Canvas
+const INITIAL_CAMERA_POSITION = {
+    x: 55,
+    y: 0,
+    z: 0
+};
+const INITIAL_CAMERA_ROTATION = {
+    x: 0,
+    y: 0,
+    z: 0
+};
+const GOLDEN_NUM = 1.618033988749895;
+// Scene Setup
 const canvas = document.querySelector("canvas.webgl");
-// Scene
 const scene = new _three.Scene();
-/**
- * Overlay
- */ const overlayGeometry = new _three.PlaneBufferGeometry(2, 2, 1, 1);
-const overlayMaterial = new _three.ShaderMaterial({
-    transparent: true,
-    uniforms: {
-        uAlpha: {
-            value: 1
-        }
-    },
-    vertexShader: `
-    void main()
-    {
-      gl_Position = vec4(position, 1.0);
-    }
-  `,
-    fragmentShader: `
-      uniform float uAlpha;
-      void main()
-      {
-        gl_FragColor = vec4(0.0, 0.0, 0.0, uAlpha);
-      }
-    `
+scene.background = new _three.Color(0x0d0d0d);
+const camera = initCamera();
+scene.add(camera);
+// Geometry and Materials
+const PLANE_GEOMETRY_HORIZONTAL = new _three.PlaneGeometry(3, 2);
+const PLANE_GEOMETRY_VERTICAL = new _three.PlaneGeometry(3, 4);
+const SHARED_MATERIAL = new _three.MeshBasicMaterial({
+    transparent: false,
+    side: _three.DoubleSide
 });
-const overlay = new _three.Mesh(overlayGeometry, overlayMaterial);
-scene.add(overlay);
-/**
- * Loader
- */ const loadingBarElement = document.querySelector(".loading-bar");
-const loadingPercent = document.querySelector(".loadpercent");
-/**
- * Texture
- */ const loadingManager = new _three.LoadingManager(// Loaded
-()=>{
-    gsap.delayedCall(0.5, ()=>{
-        gsap.to(overlayMaterial.uniforms.uAlpha, {
-            duration: 3,
-            value: 0
-        });
-        loadingBarElement.classList.add("ended");
-        loadingPercent.classList.add("ended");
-        loadingBarElement.style.transform = "";
+// Groups and Arrays
+const IMG_GROUP = new _three.Group();
+const IMG_OBJECTS = [];
+// DOM Elements
+const DOM_VERTICALS_IMAGES = document.querySelectorAll(".imgverticales span");
+const DOM_HORIZONTALES_IMAGES = document.querySelectorAll(".imghorizontales span");
+const DOM_VIDEOS = document.querySelectorAll(".video-sphere");
+const videos = [];
+const verticales = [];
+const horizontales = [];
+DOM_VERTICALS_IMAGES.forEach((imgSrc)=>verticales.push(imgSrc.dataset.imgurl));
+DOM_HORIZONTALES_IMAGES.forEach((imgSrc)=>horizontales.push(imgSrc.dataset.imgurl));
+DOM_VIDEOS.forEach((videoSrc)=>videos.push(videoSrc.src));
+// Initialization Functions
+function initCamera() {
+    const cam = new _three.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.05, 1000);
+    cam.position.set(INITIAL_CAMERA_POSITION.x, INITIAL_CAMERA_POSITION.y, INITIAL_CAMERA_POSITION.z);
+    return cam;
+}
+function initRenderer(canvas) {
+    const renderer = new _three.WebGLRenderer({
+        canvas
     });
-}, // Progress
-(url, itemsLoaded, itemsTotal)=>{
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    return renderer;
+}
+function initOverlay() {
+    const geometry = new _three.PlaneBufferGeometry(2, 2, 1, 1);
+    const material = new _three.ShaderMaterial({
+        transparent: true,
+        uniforms: {
+            uAlpha: {
+                value: 1
+            }
+        },
+        vertexShader: `
+            void main() {
+                gl_Position = vec4(position, 1.0);
+            }
+        `,
+        fragmentShader: `
+            uniform float uAlpha;
+            void main() {
+                gl_FragColor = vec4(0.0, 0.0, 0.0, uAlpha);
+            }
+        `
+    });
+    return new _three.Mesh(geometry, material);
+}
+// Loading Functions
+const loadingPercent = document.querySelector(".loadpercent");
+async function initLoading() {
+    await loadAssets();
+    removeOverlay();
+}
+const loadAssets = ()=>{
+    return new Promise((resolve)=>{
+        const loadingManager = new _three.LoadingManager(()=>{
+            gsap.delayedCall(0.5, ()=>{
+                loadingPercent.classList.add("ended");
+                resolve();
+            });
+        }, updateLoadingProgress);
+        const textureLoader = new _three.TextureLoader(loadingManager);
+        createSphere(horizontales, PLANE_GEOMETRY_HORIZONTAL, textureLoader, 10);
+        createSphere(verticales, PLANE_GEOMETRY_VERTICAL, textureLoader, 12);
+    });
+};
+function updateLoadingProgress(url, itemsLoaded, itemsTotal) {
     const progressRatio = itemsLoaded / itemsTotal;
-    loadingBarElement.style.transform = `scaleX( ${progressRatio} )`;
-    loadingPercent.innerHTML = Math.round(progressRatio * 100) + "%";
-});
-const textureLoader = new _three.TextureLoader(loadingManager);
-// Get vertical images
-let imgVerticales = document.querySelectorAll(".imgverticales span");
-let imgHorizontales = document.querySelectorAll(".imghorizontales span");
-let verticales = [];
-let horizontales = [];
-for (let imgSrc of imgVerticales)verticales.push(imgSrc.dataset.imgurl);
-for (let imgSrc1 of imgHorizontales)horizontales.push(imgSrc1.dataset.imgurl);
-/**
- * Create Objects
- */ let planeGeometry = new _three.PlaneGeometry(3, 2);
-let planeGeoVerti = new _three.PlaneGeometry(3, 4);
-let phi = 0;
-let theta = 0;
-let goldNum = 1.618033988749895;
-let myVideos = document.querySelectorAll(".video");
-const imggroup = new _three.Group();
-const imgObjects = [];
+    loadingPercent.innerHTML = `${Math.round(progressRatio * 100)}%`;
+}
+// Geometry Creation Functions
+function createSphere(imageArray, geometry, textureLoader, size) {
+    let i = 0;
+    for (let image of imageArray){
+        let imgText = textureLoader.load(image);
+        imgText.generateMipmaps = false;
+        imgText.wrapS = _three.RepeatWrapping;
+        imgText.repeat.x = -1;
+        let planeMaterial = new _three.MeshBasicMaterial({
+            map: imgText
+        });
+        planeMaterial.transparent = false;
+        planeMaterial.side = _three.DoubleSide;
+        let planeMesh = new _three.Mesh(geometry, planeMaterial);
+        i += 1;
+        fiboSphere(imageArray.length + 1, i, planeMesh, size);
+        IMG_OBJECTS.push(planeMesh);
+    }
+    scene.add(IMG_GROUP);
+}
 function fiboSphere(imgLght, iter, mesh, size) {
-    theta = 2 * Math.PI * iter / goldNum;
-    phi = Math.acos(1 - 2 * (iter + 0.5) / imgLght);
+    const theta = 2 * Math.PI * iter / GOLDEN_NUM;
+    const phi = Math.acos(1 - 2 * (iter + 0.5) / imgLght);
     let positionSphere = new _three.Spherical(size, phi, theta);
     mesh.position.setFromSpherical(positionSphere);
     mesh.lookAt(mesh.position.clone().setLength(3));
-    // add mesh to a THREE.Group to be able to rotate and move the group
-    imggroup.add(mesh);
+    IMG_GROUP.add(mesh);
 }
-function imgSphere(imgHorizon) {
-    let imgLght = imgHorizon.length + 1;
-    let i = 0;
-    for (let image of imgHorizon){
-        // Load images as texture
-        let imgText = textureLoader.load(image);
-        imgText.generateMipmaps = false;
-        // Create planeMaterial and map images texture
-        let planeMaterial = new _three.MeshBasicMaterial({
-            map: imgText
-        });
-        planeMaterial.transparent = false;
-        planeMaterial.side = _three.DoubleSide;
-        imgText.wrapS = _three.RepeatWrapping;
-        imgText.repeat.x = -1;
-        let planeMesh = new _three.Mesh(planeGeometry, planeMaterial);
-        // Create sphere using finonacci
-        i += 1;
-        fiboSphere(imgLght, i, planeMesh, 10);
-        // Add planes to imgObjects array for the rayCaster
-        imgObjects.push(planeMesh);
-    }
-    scene.add(imggroup);
-}
-// Creage a sphere of image the the array of Horizontales imgs
-imgSphere(horizontales);
-function vertiSphere(imgVerti) {
-    let imgLght = imgVerti.length + 1;
-    let i = 0;
-    for (let image of imgVerti){
-        // Load images as texture
-        let imgText = textureLoader.load(image);
-        imgText.generateMipmaps = false;
-        imgText.wrapS = _three.RepeatWrapping;
-        imgText.repeat.x = -1;
-        // Create planeMaterial and map images texture
-        let planeMaterial = new _three.MeshBasicMaterial({
-            map: imgText
-        });
-        planeMaterial.transparent = false;
-        planeMaterial.side = _three.DoubleSide;
-        let planeMesh = new _three.Mesh(planeGeoVerti, planeMaterial);
-        // Create sphere using finonacci
-        i += 1;
-        fiboSphere(imgLght, i, planeMesh, 12);
-        // Add planes to imgObjects array for the rayCaster
-        imgObjects.push(planeMesh);
-    }
-    scene.add(imggroup);
-}
-vertiSphere(verticales);
-/*
-* Video Sphere
-*/ function vidSphere(elArr) {
+// Video Sphere Function (Commented Out)
+function vidSphere(videoArray) {
     let y = 0;
-    let imgLght = elArr.length;
-    for (let vid of elArr){
-        vid.play();
-        let vidTexture = new _three.VideoTexture(vid);
-        // Create planeMaterial and map images texture
+    let imgLght = videoArray.length;
+    for (let video of videoArray){
+        video.play();
+        let vidTexture = new _three.VideoTexture(video);
         let planeMaterial = new _three.MeshBasicMaterial({
             map: vidTexture
         });
         planeMaterial.side = _three.DoubleSide;
-        let planeMesh = new _three.Mesh(planeGeometry, planeMaterial);
+        let planeMesh = new _three.Mesh(PLANE_GEOMETRY_HORIZONTAL, planeMaterial);
         y += 1;
-        // Create sphere using fibonacci
         fiboSphere(imgLght, y, planeMesh, 6);
     }
 }
-// vidSphere(myVideos)
-/**
- * Sizes
- */ const sizes = {
-    width: window.innerWidth,
-    height: window.innerHeight
-};
-window.addEventListener("resize", ()=>{
-    // Update sizes
-    sizes.width = window.innerWidth;
-    sizes.height = window.innerHeight;
-    // Update camera
+// Event Handlers
+function handleExploreButtonClick() {
+    const tl = gsap.timeline();
+    tl.fromTo(camera.position, {
+        x: 350,
+        y: 250,
+        z: 0
+    }, INITIAL_CAMERA_POSITION, {
+        duration: 2,
+        ease: "power3.inOut"
+    }).fromTo(camera.rotation, camera.rotation, INITIAL_CAMERA_ROTATION, {
+        duration: 2,
+        ease: "power3.inOut"
+    }, "-=2");
+    trackballControls.reset();
+}
+// Optimized resize function using rAF
+let resizeRequested = false;
+function handleWindowResize() {
+    const sizes = {
+        width: window.innerWidth,
+        height: window.innerHeight
+    };
     camera.aspect = sizes.width / sizes.height;
     camera.updateProjectionMatrix();
-    // Update renderer
     renderer.setSize(sizes.width, sizes.height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    fovDistances();
-});
-/**
- * Raycaster
-*/ // const raycaster = new THREE.Raycaster();
-/**
- * Mouse
-*/ const mouse = new _three.Vector2();
-/**
-* LIGHTBOX
-**/ window.addEventListener("mousemove", (event)=>{
-    mouse.x = event.clientX / sizes.width * 2 - 1;
-    mouse.y = -(event.clientY / sizes.height * 2 - 1);
-});
-let tl = gsap.timeline();
-let lightbox = document.querySelector(".lightbox");
-let imgOpen = false;
-// Handle the lightbox
-canvas.addEventListener("touchstart", tapHandler);
-let tapedTwice = false;
-function tapHandler(event) {
-    if (!tapedTwice) {
-        tapedTwice = true;
-        setTimeout(function() {
-            tapedTwice = false;
-        }, 300);
-        return false;
-    }
-    event.preventDefault();
-    //action on double tap goes below
-    if (currentIntersect) {
-        for(let i = 0; i < imgObjects.length; i++)if (currentIntersect.object === imgObjects[i]) {
-            let imgurl = imgObjects[i].material.map.source.data.currentSrc;
-            createImg(imgurl);
-        }
-        imgOpen = true;
-    }
-    if (currentIntersect) console.log("taped twice");
-    else {
-        removeImage();
-        console.log("tap should close img");
-    }
 }
-canvas.addEventListener("dblclick", (event)=>{
-    if (currentIntersect) {
-        for(let i = 0; i < imgObjects.length; i++)if (currentIntersect.object === imgObjects[i]) {
-            let imgurl = imgObjects[i].material.map.source.data.currentSrc;
-            createImg(imgurl);
-        }
-        imgOpen = true;
-    }
-});
-// Broken, need to fix when click outside of image
-//canvas.addEventListener('click', (event) => {
-//   if(! "ontouchstart" in document.documentElement) {
-//   if(currentIntersect) {
-//     console.log("clicked");
-//   } else {
-//     removeImage()
-//     console.log("should close img");
-//   }
-//   }
-// })
-let imgbox = null;
-let imgcreated = false;
-function createImg(url) {
-    if (imgcreated === false) {
-        let newimg = document.createElement("img");
-        newimg.src = url;
-        newimg.classList.add("imagebox", "img-active");
-        lightbox.appendChild(newimg);
-        imgbox = document.querySelector(".imagebox");
-        imgcreated = true;
-        // image transition
-        tl.to(".lightbox", {
-            opacity: 1,
-            zIndex: 999,
-            duration: 0.5
-        }).from(".imagebox", {
-            opacity: 0,
-            zIndex: 0,
-            duration: 0
+function handleWindowResizeRAF() {
+    if (!resizeRequested) {
+        resizeRequested = true;
+        requestAnimationFrame(()=>{
+            handleWindowResize();
+            resizeRequested = false;
         });
-        imgbox.addEventListener("click", (event)=>{
-            removeImage();
-        });
-    } else removeImage();
-}
-function removeImage() {
-    if (imgcreated === true) {
-        currentIntersect = null;
-        tl.to(".lightbox", {
-            opacity: 0,
-            duration: 1,
-            zIndex: 0
-        });
-        setTimeout(()=>{
-            imgbox.remove();
-            console.log("erase img");
-            imgcreated = false;
-            imgOpen = false;
-        }, 1000);
     }
 }
-/**
-  Camera
-  Base camera
-**/ let fov = 45;
-function fovDistances() {
-    if (window.innerWidth < 768) fov = 55;
-    else fov = 45;
+function handleIntroButtonClick(event) {
+    hideIntro();
+    zoomIn();
+    if (AUDIO) {
+        PLAY_BUTTON.classList.add("active");
+        AUDIO.play().catch((error)=>{
+            console.error("Failed to play audio:", error);
+        });
+    }
 }
-fovDistances();
-const camera = new _three.PerspectiveCamera(fov, window.innerWidth / window.innerHeight, 0.05, 1000);
-camera.position.set(50, 0, 0);
-scene.add(camera);
-scene.background = new _three.Color(0x0d0d0d);
-/**
- * Controls
- */ // const controls = new OrbitControls(camera, canvas)
-// controls.enableDamping = true // le smooth des mouvements
-// controls.dampingFactor = 0.05;
-// controls.enablePan = false
-// controls.enableZoom = true
-// // controls.zoomSpeed = 1.2
-// controls.maxDistance = 1000
-// controls.update()
-/**
- * TrackBall Controls
- */ const trackballcontrols = new (0, _trackballControlsJs.TrackballControls)(camera, canvas);
-trackballcontrols.staticMoving = false;
-trackballcontrols.dynamicDampingFactor = 0.05;
-trackballcontrols.rotateSpeed = 0.2;
-trackballcontrols.noPan = true;
-trackballcontrols.zoomSpeed = 0.5;
-trackballcontrols.maxDistance = 100;
-trackballcontrols.minDistance = 0;
-trackballcontrols.update();
-// if(window.innerWidth < 600) {
-//   trackballcontrols.rotateSpeed = 0.1;
-//   trackballcontrols.zoomSpeed = 0.1;
-// }
-/**
- * Renderer
- */ const renderer = new _three.WebGLRenderer({
-    canvas: canvas
-});
-renderer.setSize(sizes.width, sizes.height);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-/**
- * Animate
- */ const clock = new _three.Clock();
-let currentIntersect = null;
-let expbtn = document.querySelectorAll(".expbtn");
-for(let i = 0; i < expbtn.length; i++)expbtn[i].addEventListener("click", resetcamera);
-function resetcamera() {
-    trackballcontrols.reset();
-}
-const plusicon = `
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="14" height="14" viewBox="0 0 14 14">
-  <defs>
-    <clipPath id="clip-Curseur_">
-      <rect width="14" height="14"/>
-    </clipPath>
-  </defs>
-  <g id="Curseur_" data-name="Curseur +" clip-path="url(#clip-Curseur_)">
-    <g id="Union_1" data-name="Union 1" transform="translate(-19470 -18693)">
-      <path d="M 19478.001953125 18705.25 L 19477.751953125 18705.25 L 19476.25 18705.25 L 19476 18705.25 L 19476 18705 L 19476 18701.001953125 L 19472.001953125 18701.001953125 L 19471.751953125 18701.001953125 L 19471.751953125 18700.751953125 L 19471.751953125 18699.25 L 19471.751953125 18699 L 19472.001953125 18699 L 19476 18699 L 19476 18695.001953125 L 19476 18694.751953125 L 19476.25 18694.751953125 L 19477.751953125 18694.751953125 L 19478.001953125 18694.751953125 L 19478.001953125 18695.001953125 L 19478.001953125 18699 L 19482 18699 L 19482.25 18699 L 19482.25 18699.25 L 19482.25 18700.751953125 L 19482.25 18701.001953125 L 19482 18701.001953125 L 19478.001953125 18701.001953125 L 19478.001953125 18705 L 19478.001953125 18705.25 Z" stroke="none"/>
-      <path d="M 19477.751953125 18705 L 19477.751953125 18700.751953125 L 19482 18700.751953125 L 19482 18699.25 L 19477.751953125 18699.25 L 19477.751953125 18695.001953125 L 19476.25 18695.001953125 L 19476.25 18699.25 L 19472.001953125 18699.25 L 19472.001953125 18700.751953125 L 19476.25 18700.751953125 L 19476.25 18705 L 19477.751953125 18705 M 19478.251953125 18705.5 L 19475.75 18705.5 L 19475.75 18701.251953125 L 19471.501953125 18701.251953125 L 19471.501953125 18698.75 L 19475.75 18698.75 L 19475.75 18694.501953125 L 19478.251953125 18694.501953125 L 19478.251953125 18698.75 L 19482.5 18698.75 L 19482.5 18701.251953125 L 19478.251953125 18701.251953125 L 19478.251953125 18705.5 Z" stroke="none" fill="#fff"/>
-    </g>
-  </g>
-</svg>
-`;
-const plusblob = new Blob([
-    plusicon
-], {
-    type: "image/svg+xml"
-});
-const iconplus = URL.createObjectURL(plusblob);
-const tick = ()=>{
-    imggroup.rotation.y -= 0.0002;
-    // Cas a ray
-    raycaster.setFromCamera(mouse, camera);
-    const intersects = raycaster.intersectObjects(imgObjects);
-    if (intersects.length) {
-        if (!currentIntersect) currentIntersect = intersects[0];
-        document.body.style.cursor = "url(" + iconplus + "), auto";
-        console.log("not internsect");
+function handlePlayButton() {
+    if (!AUDIO.paused) {
+        PLAY_BUTTON.classList.remove("active");
+        AUDIO.pause();
     } else {
-        if (currentIntersect) document.body.style.cursor = "grab";
-        currentIntersect = null;
+        AUDIO.play();
+        PLAY_BUTTON.classList.add("active");
     }
-    // Update controls
-    // controls.update()
-    trackballcontrols.update();
-    // Render
+}
+function handleFullScreen() {
+    if (!document.fullscreenElement) {
+        FULLSCREEN_BUTTON.classList.add("active");
+        if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+        else if (document.documentElement.mozRequestFullScreen) document.documentElement.mozRequestFullScreen();
+        else if (document.documentElement.webkitRequestFullscreen) document.documentElement.webkitRequestFullscreen();
+        else if (document.documentElement.msRequestFullscreen) document.documentElement.msRequestFullscreen();
+    } else {
+        FULLSCREEN_BUTTON.classList.remove("active");
+        if (document.exitFullscreen) document.exitFullscreen();
+        else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
+        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+        else if (document.msExitFullscreen) document.msExitFullscreen();
+    }
+    setTimeout(handleWindowResizeRAF, 100);
+}
+// Animation Functions
+function hideIntro() {
+    gsap.to(".introduction", {
+        opacity: 0,
+        display: "none",
+        duration: 0.3,
+        onComplete: ()=>{
+            document.querySelector(".introduction").classList.add("d-none");
+        }
+    });
+}
+const randomRange = (min, max)=>Math.random() * (max - min) + min;
+function zoomIn() {
+    const randomPos = ()=>randomRange(0, 5);
+    gsap.timeline().fromTo(camera.position, {
+        x: 900,
+        y: 500,
+        z: 0
+    }, {
+        x: 55,
+        y: 0,
+        z: 0,
+        duration: 2,
+        ease: "power3.inOut"
+    }).to(camera.position, {
+        x: randomPos(),
+        y: 0,
+        z: 0,
+        duration: 3,
+        ease: "power3.inOut"
+    }).to(camera.position, {
+        x: 55,
+        y: 0,
+        z: 0,
+        duration: 2,
+        ease: "power3.inOut"
+    });
+}
+function removeOverlay() {
+    gsap.to(overlay.material.uniforms.uAlpha, {
+        duration: 3,
+        value: 0
+    });
+}
+function tick() {
+    updateIntersect();
+    IMG_GROUP.rotation.y -= 0.0002;
+    trackballControls.update();
     renderer.render(scene, camera);
-    // Call tick again on the next frame
-    window.requestAnimationFrame(tick);
-};
+    requestAnimationFrame(tick);
+}
+// Main Execution
+const overlay = initOverlay();
+scene.add(overlay);
+const trackballControls = (0, _controlsManagerJs.initControls)(camera, canvas);
+const { updateIntersect , getCurrentIntersect  } = (0, _mouseHandlerJs.initMouseHandler)(canvas, camera, IMG_OBJECTS);
+// Initialize lightbox handler
+const lightbox = document.querySelector(".lightbox");
+(0, _lightboxHandlerJs.initLightboxHandler)(lightbox, IMG_OBJECTS, canvas, getCurrentIntersect);
+const renderer = initRenderer(canvas);
+(0, _swupManager.initSwup)(()=>{
+    (0, _scriptManager.initScripts)();
+});
+// Event Listeners
+const PLAY_BUTTON = document.querySelector(".soundbtn");
+const AUDIO = document.querySelector("audio");
+const EXPLORE_BUTTON = document.querySelector(".expbtn");
+const INTRO_BUTTONS = document.querySelectorAll(".btnintro");
+const FULLSCREEN_BUTTON = document.querySelector(".fullscreenbtn");
+EXPLORE_BUTTON.addEventListener("click", handleExploreButtonClick);
+INTRO_BUTTONS.forEach((btn)=>btn.addEventListener("click", handleIntroButtonClick));
+PLAY_BUTTON.addEventListener("click", handlePlayButton);
+if (FULLSCREEN_BUTTON) FULLSCREEN_BUTTON.addEventListener("click", handleFullScreen);
+// Event listeners
+window.addEventListener("resize", handleWindowResizeRAF);
+document.addEventListener("fullscreenchange", handleWindowResizeRAF);
+document.addEventListener("webkitfullscreenchange", handleWindowResizeRAF);
+document.addEventListener("mozfullscreenchange", handleWindowResizeRAF);
+document.addEventListener("MSFullscreenChange", handleWindowResizeRAF);
+initLoading();
 tick();
 
-},{"three":"Br5dd","three/examples/jsm/controls/TrackballControls.js":"134Qq","swup":"daSyU","@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI"}],"Br5dd":[function(require,module,exports) {
+},{"three":"Br5dd","swup":"4uXKc","@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI","./scriptManager":"hykEh","./swupManager":"ghxDj","./modules/mouseHandler.js":"6wcRJ","./modules/lightboxHandler.js":"6Idmk","./modules/controlsManager.js":"8j0VF"}],"Br5dd":[function(require,module,exports) {
 /**
  * @license
  * Copyright 2010-2022 Three.js Authors
@@ -30273,7 +30155,1301 @@ exports.export = function(dest, destName, get) {
     });
 };
 
-},{}],"134Qq":[function(require,module,exports) {
+},{}],"4uXKc":[function(require,module,exports) {
+"use strict";
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+var _extends = Object.assign || function(target) {
+    for(var i = 1; i < arguments.length; i++){
+        var source = arguments[i];
+        for(var key in source)if (Object.prototype.hasOwnProperty.call(source, key)) target[key] = source[key];
+    }
+    return target;
+};
+var _createClass = function() {
+    function defineProperties(target, props) {
+        for(var i = 0; i < props.length; i++){
+            var descriptor = props[i];
+            descriptor.enumerable = descriptor.enumerable || false;
+            descriptor.configurable = true;
+            if ("value" in descriptor) descriptor.writable = true;
+            Object.defineProperty(target, descriptor.key, descriptor);
+        }
+    }
+    return function(Constructor, protoProps, staticProps) {
+        if (protoProps) defineProperties(Constructor.prototype, protoProps);
+        if (staticProps) defineProperties(Constructor, staticProps);
+        return Constructor;
+    };
+}();
+// modules
+var _delegateIt = require("delegate-it");
+var _delegateIt2 = _interopRequireDefault(_delegateIt);
+var _Cache = require("./modules/Cache");
+var _Cache2 = _interopRequireDefault(_Cache);
+var _loadPage = require("./modules/loadPage");
+var _loadPage2 = _interopRequireDefault(_loadPage);
+var _renderPage = require("./modules/renderPage");
+var _renderPage2 = _interopRequireDefault(_renderPage);
+var _triggerEvent = require("./modules/triggerEvent");
+var _triggerEvent2 = _interopRequireDefault(_triggerEvent);
+var _on = require("./modules/on");
+var _on2 = _interopRequireDefault(_on);
+var _off = require("./modules/off");
+var _off2 = _interopRequireDefault(_off);
+var _updateTransition = require("./modules/updateTransition");
+var _updateTransition2 = _interopRequireDefault(_updateTransition);
+var _getAnchorElement = require("./modules/getAnchorElement");
+var _getAnchorElement2 = _interopRequireDefault(_getAnchorElement);
+var _getAnimationPromises = require("./modules/getAnimationPromises");
+var _getAnimationPromises2 = _interopRequireDefault(_getAnimationPromises);
+var _getPageData = require("./modules/getPageData");
+var _getPageData2 = _interopRequireDefault(_getPageData);
+var _plugins = require("./modules/plugins");
+var _utils = require("./utils");
+var _helpers = require("./helpers");
+function _interopRequireDefault(obj) {
+    return obj && obj.__esModule ? obj : {
+        default: obj
+    };
+}
+function _classCallCheck(instance, Constructor) {
+    if (!(instance instanceof Constructor)) throw new TypeError("Cannot call a class as a function");
+}
+var Swup = function() {
+    function Swup(setOptions) {
+        _classCallCheck(this, Swup);
+        // default options
+        var defaults = {
+            animateHistoryBrowsing: false,
+            animationSelector: '[class*="transition-"]',
+            linkSelector: 'a[href^="' + window.location.origin + '"]:not([data-no-swup]), a[href^="/"]:not([data-no-swup]), a[href^="#"]:not([data-no-swup])',
+            cache: true,
+            containers: [
+                "#swup"
+            ],
+            requestHeaders: {
+                "X-Requested-With": "swup",
+                Accept: "text/html, application/xhtml+xml"
+            },
+            plugins: [],
+            skipPopStateHandling: function skipPopStateHandling(event) {
+                return !(event.state && event.state.source === "swup");
+            }
+        };
+        // merge options
+        var options = _extends({}, defaults, setOptions);
+        // handler arrays
+        this._handlers = {
+            animationInDone: [],
+            animationInStart: [],
+            animationOutDone: [],
+            animationOutStart: [],
+            animationSkipped: [],
+            clickLink: [],
+            contentReplaced: [],
+            disabled: [],
+            enabled: [],
+            openPageInNewTab: [],
+            pageLoaded: [],
+            pageRetrievedFromCache: [],
+            pageView: [],
+            popState: [],
+            samePage: [],
+            samePageWithHash: [],
+            serverError: [],
+            transitionStart: [],
+            transitionEnd: [],
+            willReplaceContent: []
+        };
+        // variable for anchor to scroll to after render
+        this.scrollToElement = null;
+        // variable for promise used for preload, so no new loading of the same page starts while page is loading
+        this.preloadPromise = null;
+        // variable for save options
+        this.options = options;
+        // variable for plugins array
+        this.plugins = [];
+        // variable for current transition object
+        this.transition = {};
+        // variable for keeping event listeners from "delegate"
+        this.delegatedListeners = {};
+        // so we are able to remove the listener
+        this.boundPopStateHandler = this.popStateHandler.bind(this);
+        // make modules accessible in instance
+        this.cache = new _Cache2.default();
+        this.cache.swup = this;
+        this.loadPage = _loadPage2.default;
+        this.renderPage = _renderPage2.default;
+        this.triggerEvent = _triggerEvent2.default;
+        this.on = _on2.default;
+        this.off = _off2.default;
+        this.updateTransition = _updateTransition2.default;
+        this.getAnimationPromises = _getAnimationPromises2.default;
+        this.getPageData = _getPageData2.default;
+        this.getAnchorElement = _getAnchorElement2.default;
+        this.log = function() {}; // here so it can be used by plugins
+        this.use = _plugins.use;
+        this.unuse = _plugins.unuse;
+        this.findPlugin = _plugins.findPlugin;
+        this.getCurrentUrl = _helpers.getCurrentUrl;
+        this.cleanupAnimationClasses = _helpers.cleanupAnimationClasses;
+        // enable swup
+        this.enable();
+    }
+    _createClass(Swup, [
+        {
+            key: "enable",
+            value: function enable() {
+                var _this = this;
+                // check for Promise support
+                if (typeof Promise === "undefined") {
+                    console.warn("Promise is not supported");
+                    return;
+                }
+                // add event listeners
+                this.delegatedListeners.click = (0, _delegateIt2.default)(document, this.options.linkSelector, "click", this.linkClickHandler.bind(this));
+                window.addEventListener("popstate", this.boundPopStateHandler);
+                this.options.cache;
+                // disabled to avoid caching modified dom state
+                // https://github.com/swup/swup/issues/475
+                // logic moved to preload plugin
+                // mark swup blocks in html
+                (0, _helpers.markSwupElements)(document.documentElement, this.options.containers);
+                // mount plugins
+                this.options.plugins.forEach(function(plugin) {
+                    _this.use(plugin);
+                });
+                // modify initial history record
+                window.history.replaceState(Object.assign({}, window.history.state, {
+                    url: window.location.href,
+                    random: Math.random(),
+                    source: "swup"
+                }), document.title, window.location.href);
+                // trigger enabled event
+                this.triggerEvent("enabled");
+                // add swup-enabled class to html tag
+                document.documentElement.classList.add("swup-enabled");
+                // trigger page view event
+                this.triggerEvent("pageView");
+            }
+        },
+        {
+            key: "destroy",
+            value: function destroy() {
+                var _this2 = this;
+                // remove delegated listeners
+                this.delegatedListeners.click.destroy();
+                // remove popstate listener
+                window.removeEventListener("popstate", this.boundPopStateHandler);
+                // empty cache
+                this.cache.empty();
+                // unmount plugins
+                this.options.plugins.forEach(function(plugin) {
+                    _this2.unuse(plugin);
+                });
+                // remove swup data atributes from blocks
+                (0, _utils.queryAll)("[data-swup]").forEach(function(element) {
+                    element.removeAttribute("data-swup");
+                });
+                // remove handlers
+                this.off();
+                // trigger disable event
+                this.triggerEvent("disabled");
+                // remove swup-enabled class from html tag
+                document.documentElement.classList.remove("swup-enabled");
+            }
+        },
+        {
+            key: "linkClickHandler",
+            value: function linkClickHandler(event) {
+                // no control key pressed
+                if (!event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) // index of pressed button needs to be checked because Firefox triggers click on all mouse buttons
+                {
+                    if (event.button === 0) {
+                        this.triggerEvent("clickLink", event);
+                        event.preventDefault();
+                        var link = new _helpers.Link(event.delegateTarget);
+                        if (link.getAddress() == (0, _helpers.getCurrentUrl)() || link.getAddress() == "") {
+                            // link to the same URL
+                            if (link.getHash() != "") {
+                                // link to the same URL with hash
+                                this.triggerEvent("samePageWithHash", event);
+                                var element = (0, _getAnchorElement2.default)(link.getHash());
+                                if (element != null) history.replaceState({
+                                    url: link.getAddress() + link.getHash(),
+                                    random: Math.random(),
+                                    source: "swup"
+                                }, document.title, link.getAddress() + link.getHash());
+                                else // referenced element not found
+                                console.warn("Element for offset not found (" + link.getHash() + ")");
+                            } else // link to the same URL without hash
+                            this.triggerEvent("samePage", event);
+                        } else {
+                            // link to different url
+                            if (link.getHash() != "") this.scrollToElement = link.getHash();
+                            // get custom transition from data
+                            var customTransition = event.delegateTarget.getAttribute("data-swup-transition");
+                            // load page
+                            this.loadPage({
+                                url: link.getAddress(),
+                                customTransition: customTransition
+                            }, false);
+                        }
+                    }
+                } else // open in new tab (do nothing)
+                this.triggerEvent("openPageInNewTab", event);
+            }
+        },
+        {
+            key: "popStateHandler",
+            value: function popStateHandler(event) {
+                if (this.options.skipPopStateHandling(event)) return;
+                var link = new _helpers.Link(event.state ? event.state.url : window.location.pathname);
+                if (link.getHash() !== "") this.scrollToElement = link.getHash();
+                else event.preventDefault();
+                this.triggerEvent("popState", event);
+                if (!this.options.animateHistoryBrowsing) {
+                    document.documentElement.classList.remove("is-animating");
+                    (0, _helpers.cleanupAnimationClasses)();
+                }
+                this.loadPage({
+                    url: link.getAddress()
+                }, event);
+            }
+        }
+    ]);
+    return Swup;
+}();
+exports.default = Swup;
+
+},{"delegate-it":"eZMvf","./modules/Cache":"ahCX5","./modules/loadPage":"jIIld","./modules/renderPage":"6rwcf","./modules/triggerEvent":"40M4u","./modules/on":"7hUv0","./modules/off":"jyvfM","./modules/updateTransition":"3H0yb","./modules/getAnchorElement":"9RZZC","./modules/getAnimationPromises":"at1Sr","./modules/getPageData":"hTK8x","./modules/plugins":"6z4YY","./utils":"3wDRy","./helpers":"djlWR"}],"eZMvf":[function(require,module,exports) {
+/** Keeps track of raw listeners added to the base elements to avoid duplication */ var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+const ledger = new WeakMap();
+function editLedger(wanted, baseElement, callback, setup) {
+    var _a, _b;
+    if (!wanted && !ledger.has(baseElement)) return false;
+    const elementMap = (_a = ledger.get(baseElement)) !== null && _a !== void 0 ? _a : new WeakMap();
+    ledger.set(baseElement, elementMap);
+    if (!wanted && !ledger.has(baseElement)) return false;
+    const setups = (_b = elementMap.get(callback)) !== null && _b !== void 0 ? _b : new Set();
+    elementMap.set(callback, setups);
+    const existed = setups.has(setup);
+    if (wanted) setups.add(setup);
+    else setups.delete(setup);
+    return existed && wanted;
+}
+function isEventTarget(elements) {
+    return typeof elements.addEventListener === "function";
+}
+function safeClosest(event, selector) {
+    let target = event.target;
+    if (target instanceof Text) target = target.parentElement;
+    if (target instanceof Element && event.currentTarget instanceof Element) {
+        // `.closest()` may match ancestors of `currentTarget` but we only need its children
+        const closest = target.closest(selector);
+        if (closest && event.currentTarget.contains(closest)) return closest;
+    }
+}
+// This type isn't exported as a declaration, so it needs to be duplicated above
+function delegate(base, selector, type, callback, options) {
+    // Handle Selector-based usage
+    if (typeof base === "string") base = document.querySelectorAll(base);
+    // Handle Array-like based usage
+    if (!isEventTarget(base)) {
+        const subscriptions = Array.prototype.map.call(base, (element)=>delegate(element, selector, type, callback, options));
+        return {
+            destroy () {
+                for (const subscription of subscriptions)subscription.destroy();
+            }
+        };
+    }
+    // `document` should never be the base, it's just an easy way to define "global event listeners"
+    const baseElement = base instanceof Document ? base.documentElement : base;
+    // Handle the regular Element usage
+    const capture = Boolean(typeof options === "object" ? options.capture : options);
+    const listenerFn = (event)=>{
+        const delegateTarget = safeClosest(event, selector);
+        if (delegateTarget) {
+            event.delegateTarget = delegateTarget;
+            callback.call(baseElement, event);
+        }
+    };
+    // Drop unsupported `once` option https://github.com/fregante/delegate-it/pull/28#discussion_r863467939
+    if (typeof options === "object") delete options.once;
+    const setup = JSON.stringify({
+        selector,
+        type,
+        capture
+    });
+    const isAlreadyListening = editLedger(true, baseElement, callback, setup);
+    const delegateSubscription = {
+        destroy () {
+            baseElement.removeEventListener(type, listenerFn, options);
+            editLedger(false, baseElement, callback, setup);
+        }
+    };
+    if (!isAlreadyListening) baseElement.addEventListener(type, listenerFn, options);
+    return delegateSubscription;
+}
+exports.default = delegate;
+
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI"}],"ahCX5":[function(require,module,exports) {
+"use strict";
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.Cache = undefined;
+var _createClass = function() {
+    function defineProperties(target, props) {
+        for(var i = 0; i < props.length; i++){
+            var descriptor = props[i];
+            descriptor.enumerable = descriptor.enumerable || false;
+            descriptor.configurable = true;
+            if ("value" in descriptor) descriptor.writable = true;
+            Object.defineProperty(target, descriptor.key, descriptor);
+        }
+    }
+    return function(Constructor, protoProps, staticProps) {
+        if (protoProps) defineProperties(Constructor.prototype, protoProps);
+        if (staticProps) defineProperties(Constructor, staticProps);
+        return Constructor;
+    };
+}();
+var _helpers = require("../helpers");
+function _classCallCheck(instance, Constructor) {
+    if (!(instance instanceof Constructor)) throw new TypeError("Cannot call a class as a function");
+}
+var Cache = exports.Cache = function() {
+    function Cache() {
+        _classCallCheck(this, Cache);
+        this.pages = {};
+        this.last = null;
+    }
+    _createClass(Cache, [
+        {
+            key: "cacheUrl",
+            value: function cacheUrl(page) {
+                page.url = (0, _helpers.normalizeUrl)(page.url);
+                if (page.url in this.pages === false) this.pages[page.url] = page;
+                this.last = this.pages[page.url];
+                this.swup.log("Cache (" + Object.keys(this.pages).length + ")", this.pages);
+            }
+        },
+        {
+            key: "getPage",
+            value: function getPage(url) {
+                url = (0, _helpers.normalizeUrl)(url);
+                return this.pages[url];
+            }
+        },
+        {
+            key: "getCurrentPage",
+            value: function getCurrentPage() {
+                return this.getPage((0, _helpers.getCurrentUrl)());
+            }
+        },
+        {
+            key: "exists",
+            value: function exists(url) {
+                url = (0, _helpers.normalizeUrl)(url);
+                return url in this.pages;
+            }
+        },
+        {
+            key: "empty",
+            value: function empty() {
+                this.pages = {};
+                this.last = null;
+                this.swup.log("Cache cleared");
+            }
+        },
+        {
+            key: "remove",
+            value: function remove(url) {
+                delete this.pages[url];
+            }
+        }
+    ]);
+    return Cache;
+}();
+exports.default = Cache;
+
+},{"../helpers":"djlWR"}],"djlWR":[function(require,module,exports) {
+"use strict";
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.cleanupAnimationClasses = exports.Link = exports.markSwupElements = exports.normalizeUrl = exports.getCurrentUrl = exports.transitionProperty = exports.transitionEnd = exports.fetch = exports.getDataFromHtml = exports.createHistoryRecord = exports.classify = undefined;
+var _classify = require("./classify");
+var _classify2 = _interopRequireDefault(_classify);
+var _createHistoryRecord = require("./createHistoryRecord");
+var _createHistoryRecord2 = _interopRequireDefault(_createHistoryRecord);
+var _getDataFromHtml = require("./getDataFromHtml");
+var _getDataFromHtml2 = _interopRequireDefault(_getDataFromHtml);
+var _fetch = require("./fetch");
+var _fetch2 = _interopRequireDefault(_fetch);
+var _transitionEnd = require("./transitionEnd");
+var _transitionEnd2 = _interopRequireDefault(_transitionEnd);
+var _transitionProperty = require("./transitionProperty");
+var _transitionProperty2 = _interopRequireDefault(_transitionProperty);
+var _getCurrentUrl = require("./getCurrentUrl");
+var _getCurrentUrl2 = _interopRequireDefault(_getCurrentUrl);
+var _normalizeUrl = require("./normalizeUrl");
+var _normalizeUrl2 = _interopRequireDefault(_normalizeUrl);
+var _markSwupElements = require("./markSwupElements");
+var _markSwupElements2 = _interopRequireDefault(_markSwupElements);
+var _Link = require("./Link");
+var _Link2 = _interopRequireDefault(_Link);
+var _cleanupAnimationClasses = require("./cleanupAnimationClasses");
+var _cleanupAnimationClasses2 = _interopRequireDefault(_cleanupAnimationClasses);
+function _interopRequireDefault(obj) {
+    return obj && obj.__esModule ? obj : {
+        default: obj
+    };
+}
+var classify = exports.classify = _classify2.default;
+var createHistoryRecord = exports.createHistoryRecord = _createHistoryRecord2.default;
+var getDataFromHtml = exports.getDataFromHtml = _getDataFromHtml2.default;
+var fetch = exports.fetch = _fetch2.default;
+var transitionEnd = exports.transitionEnd = _transitionEnd2.default;
+var transitionProperty = exports.transitionProperty = _transitionProperty2.default;
+var getCurrentUrl = exports.getCurrentUrl = _getCurrentUrl2.default;
+var normalizeUrl = exports.normalizeUrl = _normalizeUrl2.default;
+var markSwupElements = exports.markSwupElements = _markSwupElements2.default;
+var Link = exports.Link = _Link2.default;
+var cleanupAnimationClasses = exports.cleanupAnimationClasses = _cleanupAnimationClasses2.default;
+
+},{"./classify":"6gVuT","./createHistoryRecord":"7OqJD","./getDataFromHtml":"gwWDG","./fetch":"4rZcE","./transitionEnd":"hNGam","./transitionProperty":"7bwI0","./getCurrentUrl":"bEh3W","./normalizeUrl":"9mArR","./markSwupElements":"3R2KK","./Link":"1r3wT","./cleanupAnimationClasses":"gmQ9k"}],"6gVuT":[function(require,module,exports) {
+"use strict";
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+var classify = function classify(text) {
+    var output = text.toString().toLowerCase().replace(/\s+/g, "-") // Replace spaces with -
+    .replace(/\//g, "-") // Replace / with -
+    .replace(/[^\w\-]+/g, "") // Remove all non-word chars
+    .replace(/\-\-+/g, "-") // Replace multiple - with single -
+    .replace(/^-+/, "") // Trim - from start of text
+    .replace(/-+$/, ""); // Trim - from end of text
+    if (output[0] === "/") output = output.splice(1);
+    if (output === "") output = "homepage";
+    return output;
+};
+exports.default = classify;
+
+},{}],"7OqJD":[function(require,module,exports) {
+"use strict";
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+var createHistoryRecord = function createHistoryRecord(url) {
+    window.history.pushState({
+        url: url || window.location.href.split(window.location.hostname)[1],
+        random: Math.random(),
+        source: "swup"
+    }, document.title, url || window.location.href.split(window.location.hostname)[1]);
+};
+exports.default = createHistoryRecord;
+
+},{}],"gwWDG":[function(require,module,exports) {
+"use strict";
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+var _utils = require("../utils");
+var getDataFromHtml = function getDataFromHtml(html, containers) {
+    var fakeDom = document.createElement("html");
+    fakeDom.innerHTML = html;
+    var blocks = [];
+    containers.forEach(function(selector) {
+        if ((0, _utils.query)(selector, fakeDom) == null) {
+            console.warn("[swup] Container " + selector + " not found on page.");
+            return null;
+        } else {
+            if ((0, _utils.queryAll)(selector).length !== (0, _utils.queryAll)(selector, fakeDom).length) console.warn("[swup] Mismatched number of containers found on new page.");
+            (0, _utils.queryAll)(selector).forEach(function(item, index) {
+                (0, _utils.queryAll)(selector, fakeDom)[index].setAttribute("data-swup", blocks.length);
+                blocks.push((0, _utils.queryAll)(selector, fakeDom)[index].outerHTML);
+            });
+        }
+    });
+    var json = {
+        title: (fakeDom.querySelector("title") || {}).innerText,
+        pageClass: fakeDom.querySelector("body").className,
+        originalContent: html,
+        blocks: blocks
+    };
+    // to prevent memory leaks
+    fakeDom.innerHTML = "";
+    fakeDom = null;
+    return json;
+};
+exports.default = getDataFromHtml;
+
+},{"../utils":"3wDRy"}],"3wDRy":[function(require,module,exports) {
+"use strict";
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+var query = exports.query = function query(selector) {
+    var context = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : document;
+    if (typeof selector !== "string") return selector;
+    return context.querySelector(selector);
+};
+var queryAll = exports.queryAll = function queryAll(selector) {
+    var context = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : document;
+    if (typeof selector !== "string") return selector;
+    return Array.prototype.slice.call(context.querySelectorAll(selector));
+};
+var escapeCssIdentifier = exports.escapeCssIdentifier = function escapeCssIdentifier(ident) {
+    if (window.CSS && window.CSS.escape) return CSS.escape(ident);
+    else return ident;
+};
+
+},{}],"4rZcE":[function(require,module,exports) {
+"use strict";
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+var _extends = Object.assign || function(target) {
+    for(var i = 1; i < arguments.length; i++){
+        var source = arguments[i];
+        for(var key in source)if (Object.prototype.hasOwnProperty.call(source, key)) target[key] = source[key];
+    }
+    return target;
+};
+var fetch = function fetch(setOptions) {
+    var callback = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
+    var defaults = {
+        url: window.location.pathname + window.location.search,
+        method: "GET",
+        data: null,
+        headers: {}
+    };
+    var options = _extends({}, defaults, setOptions);
+    var request = new XMLHttpRequest();
+    request.onreadystatechange = function() {
+        if (request.readyState === 4) {
+            if (request.status !== 500) callback(request);
+            else callback(request);
+        }
+    };
+    request.open(options.method, options.url, true);
+    Object.keys(options.headers).forEach(function(key) {
+        request.setRequestHeader(key, options.headers[key]);
+    });
+    request.send(options.data);
+    return request;
+};
+exports.default = fetch;
+
+},{}],"hNGam":[function(require,module,exports) {
+"use strict";
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+var transitionEnd = function transitionEnd() {
+    if (window.ontransitionend === undefined && window.onwebkittransitionend !== undefined) return "webkitTransitionEnd";
+    else return "transitionend";
+};
+exports.default = transitionEnd;
+
+},{}],"7bwI0":[function(require,module,exports) {
+"use strict";
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+var transitionProperty = function transitionProperty() {
+    if (window.ontransitionend === undefined && window.onwebkittransitionend !== undefined) return "WebkitTransition";
+    else return "transition";
+};
+exports.default = transitionProperty;
+
+},{}],"bEh3W":[function(require,module,exports) {
+"use strict";
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+var getCurrentUrl = function getCurrentUrl() {
+    return window.location.pathname + window.location.search;
+};
+exports.default = getCurrentUrl;
+
+},{}],"9mArR":[function(require,module,exports) {
+"use strict";
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+var _Link = require("./Link");
+var _Link2 = _interopRequireDefault(_Link);
+function _interopRequireDefault(obj) {
+    return obj && obj.__esModule ? obj : {
+        default: obj
+    };
+}
+var normalizeUrl = function normalizeUrl(url) {
+    return new _Link2.default(url).getAddress();
+};
+exports.default = normalizeUrl;
+
+},{"./Link":"1r3wT"}],"1r3wT":[function(require,module,exports) {
+"use strict";
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+var _createClass = function() {
+    function defineProperties(target, props) {
+        for(var i = 0; i < props.length; i++){
+            var descriptor = props[i];
+            descriptor.enumerable = descriptor.enumerable || false;
+            descriptor.configurable = true;
+            if ("value" in descriptor) descriptor.writable = true;
+            Object.defineProperty(target, descriptor.key, descriptor);
+        }
+    }
+    return function(Constructor, protoProps, staticProps) {
+        if (protoProps) defineProperties(Constructor.prototype, protoProps);
+        if (staticProps) defineProperties(Constructor, staticProps);
+        return Constructor;
+    };
+}();
+function _classCallCheck(instance, Constructor) {
+    if (!(instance instanceof Constructor)) throw new TypeError("Cannot call a class as a function");
+}
+var Link = function() {
+    function Link(elementOrUrl) {
+        _classCallCheck(this, Link);
+        if (elementOrUrl instanceof Element || elementOrUrl instanceof SVGElement) this.link = elementOrUrl;
+        else {
+            this.link = document.createElement("a");
+            this.link.href = elementOrUrl;
+        }
+    }
+    _createClass(Link, [
+        {
+            key: "getPath",
+            value: function getPath() {
+                var path = this.link.pathname;
+                if (path[0] !== "/") path = "/" + path;
+                return path;
+            }
+        },
+        {
+            key: "getAddress",
+            value: function getAddress() {
+                var path = this.link.pathname + this.link.search;
+                if (this.link.getAttribute("xlink:href")) path = this.link.getAttribute("xlink:href");
+                if (path[0] !== "/") path = "/" + path;
+                return path;
+            }
+        },
+        {
+            key: "getHash",
+            value: function getHash() {
+                return this.link.hash;
+            }
+        }
+    ]);
+    return Link;
+}();
+exports.default = Link;
+
+},{}],"3R2KK":[function(require,module,exports) {
+"use strict";
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+var _utils = require("../utils");
+var markSwupElements = function markSwupElements(element, containers) {
+    var blocks = 0;
+    containers.forEach(function(selector) {
+        if ((0, _utils.query)(selector, element) == null) console.warn("[swup] Container " + selector + " not found on page.");
+        else (0, _utils.queryAll)(selector).forEach(function(item, index) {
+            (0, _utils.queryAll)(selector, element)[index].setAttribute("data-swup", blocks);
+            blocks++;
+        });
+    });
+};
+exports.default = markSwupElements;
+
+},{"../utils":"3wDRy"}],"gmQ9k":[function(require,module,exports) {
+"use strict";
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+var cleanupAnimationClasses = function cleanupAnimationClasses() {
+    document.documentElement.className.split(" ").forEach(function(classItem) {
+        if (// remove "to-{page}" classes
+        new RegExp("^to-").test(classItem) || // remove all other classes
+        classItem === "is-changing" || classItem === "is-rendering" || classItem === "is-popstate") document.documentElement.classList.remove(classItem);
+    });
+};
+exports.default = cleanupAnimationClasses;
+
+},{}],"jIIld":[function(require,module,exports) {
+"use strict";
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+var _slicedToArray = function() {
+    function sliceIterator(arr, i) {
+        var _arr = [];
+        var _n = true;
+        var _d = false;
+        var _e = undefined;
+        try {
+            for(var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true){
+                _arr.push(_s.value);
+                if (i && _arr.length === i) break;
+            }
+        } catch (err) {
+            _d = true;
+            _e = err;
+        } finally{
+            try {
+                if (!_n && _i["return"]) _i["return"]();
+            } finally{
+                if (_d) throw _e;
+            }
+        }
+        return _arr;
+    }
+    return function(arr, i) {
+        if (Array.isArray(arr)) return arr;
+        else if (Symbol.iterator in Object(arr)) return sliceIterator(arr, i);
+        else throw new TypeError("Invalid attempt to destructure non-iterable instance");
+    };
+}();
+var _extends = Object.assign || function(target) {
+    for(var i = 1; i < arguments.length; i++){
+        var source = arguments[i];
+        for(var key in source)if (Object.prototype.hasOwnProperty.call(source, key)) target[key] = source[key];
+    }
+    return target;
+};
+var _helpers = require("../helpers");
+var loadPage = function loadPage(data, popstate) {
+    var _this = this;
+    // create array for storing animation promises
+    var animationPromises = [], xhrPromise = void 0;
+    var animateOut = function animateOut() {
+        _this.triggerEvent("animationOutStart");
+        // handle classes
+        document.documentElement.classList.add("is-changing");
+        document.documentElement.classList.add("is-leaving");
+        document.documentElement.classList.add("is-animating");
+        if (popstate) document.documentElement.classList.add("is-popstate");
+        document.documentElement.classList.add("to-" + (0, _helpers.classify)(data.url));
+        // animation promise stuff
+        animationPromises = _this.getAnimationPromises("out");
+        Promise.all(animationPromises).then(function() {
+            _this.triggerEvent("animationOutDone");
+        });
+        // create history record if this is not a popstate call
+        if (!popstate) {
+            // create pop element with or without anchor
+            var state = void 0;
+            if (_this.scrollToElement != null) state = data.url + _this.scrollToElement;
+            else state = data.url;
+            (0, _helpers.createHistoryRecord)(state);
+        }
+    };
+    this.triggerEvent("transitionStart", popstate);
+    // set transition object
+    if (data.customTransition != null) {
+        this.updateTransition(window.location.pathname, data.url, data.customTransition);
+        document.documentElement.classList.add("to-" + (0, _helpers.classify)(data.customTransition));
+    } else this.updateTransition(window.location.pathname, data.url);
+    // start/skip animation
+    if (!popstate || this.options.animateHistoryBrowsing) animateOut();
+    else this.triggerEvent("animationSkipped");
+    // start/skip loading of page
+    if (this.cache.exists(data.url)) {
+        xhrPromise = new Promise(function(resolve) {
+            resolve(_this.cache.getPage(data.url));
+        });
+        this.triggerEvent("pageRetrievedFromCache");
+    } else if (!this.preloadPromise || this.preloadPromise.route != data.url) xhrPromise = new Promise(function(resolve, reject) {
+        (0, _helpers.fetch)(_extends({}, data, {
+            headers: _this.options.requestHeaders
+        }), function(response) {
+            if (response.status === 500) {
+                _this.triggerEvent("serverError");
+                reject(data.url);
+                return;
+            } else {
+                // get json data
+                var page = _this.getPageData(response);
+                if (page != null && page.blocks.length > 0) page.url = data.url;
+                else {
+                    reject(data.url);
+                    return;
+                }
+                // render page
+                _this.cache.cacheUrl(page);
+                _this.triggerEvent("pageLoaded");
+                resolve(page);
+            }
+        });
+    });
+    else xhrPromise = this.preloadPromise;
+    // when everything is ready, handle the outcome
+    Promise.all([
+        xhrPromise
+    ].concat(animationPromises)).then(function(_ref) {
+        var _ref2 = _slicedToArray(_ref, 1), pageData = _ref2[0];
+        // render page
+        _this.renderPage(pageData, popstate);
+        _this.preloadPromise = null;
+    }).catch(function(errorUrl) {
+        // rewrite the skipPopStateHandling function to redirect manually when the history.go is processed
+        _this.options.skipPopStateHandling = function() {
+            window.location = errorUrl;
+            return true;
+        };
+        // go back to the actual page were still at
+        window.history.go(-1);
+    });
+};
+exports.default = loadPage;
+
+},{"../helpers":"djlWR"}],"6rwcf":[function(require,module,exports) {
+"use strict";
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+var _extends = Object.assign || function(target) {
+    for(var i = 1; i < arguments.length; i++){
+        var source = arguments[i];
+        for(var key in source)if (Object.prototype.hasOwnProperty.call(source, key)) target[key] = source[key];
+    }
+    return target;
+};
+var _helpers = require("../helpers");
+var renderPage = function renderPage(page, popstate) {
+    var _this = this;
+    document.documentElement.classList.remove("is-leaving");
+    var isCurrentPage = this.getCurrentUrl() === page.url;
+    if (!isCurrentPage) return;
+    // replace state in case the url was redirected
+    var url = new _helpers.Link(page.responseURL).getPath();
+    if (window.location.pathname !== url) {
+        window.history.replaceState({
+            url: url,
+            random: Math.random(),
+            source: "swup"
+        }, document.title, url);
+        // save new record for redirected url
+        this.cache.cacheUrl(_extends({}, page, {
+            url: url
+        }));
+    }
+    // only add for non-popstate transitions
+    if (!popstate || this.options.animateHistoryBrowsing) document.documentElement.classList.add("is-rendering");
+    this.triggerEvent("willReplaceContent", popstate);
+    // replace blocks
+    for(var i = 0; i < page.blocks.length; i++)document.body.querySelector('[data-swup="' + i + '"]').outerHTML = page.blocks[i];
+    // set title
+    document.title = page.title;
+    this.triggerEvent("contentReplaced", popstate);
+    this.triggerEvent("pageView", popstate);
+    // empty cache if it's disabled (because pages could be preloaded and stuff)
+    if (!this.options.cache) this.cache.empty();
+    // start animation IN
+    setTimeout(function() {
+        if (!popstate || _this.options.animateHistoryBrowsing) {
+            _this.triggerEvent("animationInStart");
+            document.documentElement.classList.remove("is-animating");
+        }
+    }, 10);
+    // handle end of animation
+    if (!popstate || this.options.animateHistoryBrowsing) {
+        var animationPromises = this.getAnimationPromises("in");
+        Promise.all(animationPromises).then(function() {
+            _this.triggerEvent("animationInDone");
+            _this.triggerEvent("transitionEnd", popstate);
+            _this.cleanupAnimationClasses();
+        });
+    } else this.triggerEvent("transitionEnd", popstate);
+    // reset scroll-to element
+    this.scrollToElement = null;
+};
+exports.default = renderPage;
+
+},{"../helpers":"djlWR"}],"40M4u":[function(require,module,exports) {
+"use strict";
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+var triggerEvent = function triggerEvent(eventName, originalEvent) {
+    // call saved handlers with "on" method and pass originalEvent object if available
+    this._handlers[eventName].forEach(function(handler) {
+        try {
+            handler(originalEvent);
+        } catch (error) {
+            console.error(error);
+        }
+    });
+    // trigger event on document with prefix "swup:"
+    var event = new CustomEvent("swup:" + eventName, {
+        detail: eventName
+    });
+    document.dispatchEvent(event);
+};
+exports.default = triggerEvent;
+
+},{}],"7hUv0":[function(require,module,exports) {
+"use strict";
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+var on = function on(event, handler) {
+    if (this._handlers[event]) this._handlers[event].push(handler);
+    else console.warn("Unsupported event " + event + ".");
+};
+exports.default = on;
+
+},{}],"jyvfM":[function(require,module,exports) {
+"use strict";
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+var off = function off(event, handler) {
+    var _this = this;
+    if (event != null) {
+        if (handler != null) {
+            if (this._handlers[event] && this._handlers[event].filter(function(savedHandler) {
+                return savedHandler === handler;
+            }).length) {
+                var toRemove = this._handlers[event].filter(function(savedHandler) {
+                    return savedHandler === handler;
+                })[0];
+                var index = this._handlers[event].indexOf(toRemove);
+                if (index > -1) this._handlers[event].splice(index, 1);
+            } else console.warn("Handler for event '" + event + "' no found.");
+        } else this._handlers[event] = [];
+    } else Object.keys(this._handlers).forEach(function(keys) {
+        _this._handlers[keys] = [];
+    });
+};
+exports.default = off;
+
+},{}],"3H0yb":[function(require,module,exports) {
+"use strict";
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+var updateTransition = function updateTransition(from, to, custom) {
+    // transition routes
+    this.transition = {
+        from: from,
+        to: to,
+        custom: custom
+    };
+};
+exports.default = updateTransition;
+
+},{}],"9RZZC":[function(require,module,exports) {
+"use strict";
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+var _utils = require("../utils");
+var getAnchorElement = function getAnchorElement(hash) {
+    if (!hash) return null;
+    if (hash.charAt(0) === "#") hash = hash.substring(1);
+    hash = decodeURIComponent(hash);
+    hash = (0, _utils.escapeCssIdentifier)(hash);
+    // https://html.spec.whatwg.org/#find-a-potential-indicated-element
+    return (0, _utils.query)("#" + hash) || (0, _utils.query)("a[name='" + hash + "']");
+};
+exports.default = getAnchorElement;
+
+},{"../utils":"3wDRy"}],"at1Sr":[function(require,module,exports) {
+"use strict";
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+var _utils = require("../utils");
+var _helpers = require("../helpers");
+var getAnimationPromises = function getAnimationPromises() {
+    var selector = this.options.animationSelector;
+    var durationProperty = (0, _helpers.transitionProperty)() + "Duration";
+    var promises = [];
+    var animatedElements = (0, _utils.queryAll)(selector, document.body);
+    if (!animatedElements.length) {
+        console.warn("[swup] No animated elements found by selector " + selector);
+        return [
+            Promise.resolve()
+        ];
+    }
+    animatedElements.forEach(function(element) {
+        var transitionDuration = window.getComputedStyle(element)[durationProperty];
+        // Resolve immediately if no transition defined
+        if (!transitionDuration || transitionDuration == "0s") {
+            console.warn("[swup] No CSS transition duration defined for element of selector " + selector);
+            promises.push(Promise.resolve());
+            return;
+        }
+        var promise = new Promise(function(resolve) {
+            element.addEventListener((0, _helpers.transitionEnd)(), function(event) {
+                if (element == event.target) resolve();
+            });
+        });
+        promises.push(promise);
+    });
+    return promises;
+};
+exports.default = getAnimationPromises;
+
+},{"../utils":"3wDRy","../helpers":"djlWR"}],"hTK8x":[function(require,module,exports) {
+"use strict";
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+var _helpers = require("../helpers");
+var getPageData = function getPageData(request) {
+    // this method can be replaced in case other content than html is expected to be received from server
+    // this function should always return {title, pageClass, originalContent, blocks, responseURL}
+    // in case page has invalid structure - return null
+    var html = request.responseText;
+    var pageObject = (0, _helpers.getDataFromHtml)(html, this.options.containers);
+    if (pageObject) pageObject.responseURL = request.responseURL ? request.responseURL : window.location.href;
+    else {
+        console.warn("[swup] Received page is invalid.");
+        return null;
+    }
+    return pageObject;
+};
+exports.default = getPageData;
+
+},{"../helpers":"djlWR"}],"6z4YY":[function(require,module,exports) {
+"use strict";
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+var use = exports.use = function use(plugin) {
+    if (!plugin.isSwupPlugin) {
+        console.warn("Not swup plugin instance " + plugin + ".");
+        return;
+    }
+    this.plugins.push(plugin);
+    plugin.swup = this;
+    if (typeof plugin._beforeMount === "function") plugin._beforeMount();
+    plugin.mount();
+    return this.plugins;
+};
+var unuse = exports.unuse = function unuse(plugin) {
+    var pluginReference = void 0;
+    if (typeof plugin === "string") pluginReference = this.plugins.find(function(p) {
+        return plugin === p.name;
+    });
+    else pluginReference = plugin;
+    if (!pluginReference) {
+        console.warn("No such plugin.");
+        return;
+    }
+    pluginReference.unmount();
+    if (typeof pluginReference._afterUnmount === "function") pluginReference._afterUnmount();
+    var index = this.plugins.indexOf(pluginReference);
+    this.plugins.splice(index, 1);
+    return this.plugins;
+};
+var findPlugin = exports.findPlugin = function findPlugin(pluginName) {
+    return this.plugins.find(function(p) {
+        return pluginName === p.name;
+    });
+};
+
+},{}],"hykEh":[function(require,module,exports) {
+// scriptManager.js
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+parcelHelpers.export(exports, "initScripts", ()=>initScripts);
+function initScripts() {
+    const bio = document.querySelector(".bio");
+    const parcour = document.querySelector(".parcour");
+    if (bio && parcour) {
+        bio.addEventListener("mouseenter", ()=>{
+            if (bio.classList.contains("darkbg")) {
+                bio.classList.remove("darkbg");
+                parcour.classList.add("darkbg");
+            } else {
+                bio.classList.add("darkbg");
+                parcour.classList.remove("darkbg");
+            }
+        });
+        parcour.addEventListener("mouseenter", ()=>{
+            if (parcour.classList.contains("darkbg")) {
+                parcour.classList.remove("darkbg");
+                bio.classList.add("darkbg");
+            } else {
+                parcour.classList.add("darkbg");
+                bio.classList.remove("darkbg");
+            }
+        });
+    }
+}
+
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI"}],"ghxDj":[function(require,module,exports) {
+// swupManager.js
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+parcelHelpers.export(exports, "initSwup", ()=>initSwup);
+var _swup = require("swup");
+var _swupDefault = parcelHelpers.interopDefault(_swup);
+function initSwup(onContentReplaced) {
+    const swup = new (0, _swupDefault.default)();
+    swup.on("contentReplaced", ()=>{
+        if (onContentReplaced) onContentReplaced();
+    });
+    return swup;
+}
+
+},{"swup":"4uXKc","@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI"}],"6wcRJ":[function(require,module,exports) {
+// mouseHandler.js
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+parcelHelpers.export(exports, "initMouseHandler", ()=>initMouseHandler);
+var _three = require("three");
+function initMouseHandler(canvas, camera, imgObjects) {
+    const raycaster = new _three.Raycaster();
+    const mouse = new _three.Vector2();
+    let currentIntersect = null;
+    const plusIcon = `
+    <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="14" height="14" viewBox="0 0 14 14">
+      <defs>
+        <clipPath id="clip-Curseur_">
+          <rect width="14" height="14"/>
+        </clipPath>
+      </defs>
+      <g id="Curseur_" data-name="Curseur +" clip-path="url(#clip-Curseur_)">
+        <g id="Union_1" data-name="Union 1" transform="translate(-19470 -18693)">
+          <path d="M 19478.001953125 18705.25 L 19477.751953125 18705.25 L 19476.25 18705.25 L 19476 18705.25 L 19476 18705 L 19476 18701.001953125 L 19472.001953125 18701.001953125 L 19471.751953125 18701.001953125 L 19471.751953125 18700.751953125 L 19471.751953125 18699.25 L 19471.751953125 18699 L 19472.001953125 18699 L 19476 18699 L 19476 18695.001953125 L 19476 18694.751953125 L 19476.25 18694.751953125 L 19477.751953125 18694.751953125 L 19478.001953125 18694.751953125 L 19478.001953125 18695.001953125 L 19478.001953125 18699 L 19482 18699 L 19482.25 18699 L 19482.25 18699.25 L 19482.25 18700.751953125 L 19482.25 18701.001953125 L 19482 18701.001953125 L 19478.001953125 18701.001953125 L 19478.001953125 18705 L 19478.001953125 18705.25 Z" stroke="none"/>
+          <path d="M 19477.751953125 18705 L 19477.751953125 18700.751953125 L 19482 18700.751953125 L 19482 18699.25 L 19477.751953125 18699.25 L 19477.751953125 18695.001953125 L 19476.25 18695.001953125 L 19476.25 18699.25 L 19472.001953125 18699.25 L 19472.001953125 18700.751953125 L 19476.25 18700.751953125 L 19476.25 18705 L 19477.751953125 18705 M 19478.251953125 18705.5 L 19475.75 18705.5 L 19475.75 18701.251953125 L 19471.501953125 18701.251953125 L 19471.501953125 18698.75 L 19475.75 18698.75 L 19475.75 18694.501953125 L 19478.251953125 18694.501953125 L 19478.251953125 18698.75 L 19482.5 18698.75 L 19482.5 18701.251953125 L 19478.251953125 18701.251953125 L 19478.251953125 18705.5 Z" stroke="none" fill="#fff"/>
+        </g>
+      </g>
+    </svg>
+    `;
+    const plusBlob = new Blob([
+        plusIcon
+    ], {
+        type: "image/svg+xml"
+    });
+    const iconPlusUrl = URL.createObjectURL(plusBlob);
+    const handleMouseMove = (event)=>{
+        mouse.x = event.clientX / window.innerWidth * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight * 2 - 1);
+    };
+    const updateIntersect = ()=>{
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(imgObjects);
+        if (intersects.length) {
+            if (!currentIntersect) {
+                currentIntersect = intersects[0];
+                document.body.style.cursor = `url('${iconPlusUrl}'), auto`;
+            }
+        } else if (currentIntersect) {
+            document.body.style.cursor = "grab";
+            currentIntersect = null;
+        }
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    return {
+        updateIntersect,
+        getCurrentIntersect: ()=>currentIntersect
+    };
+}
+
+},{"three":"Br5dd","@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI"}],"6Idmk":[function(require,module,exports) {
+// lightboxHandler.js
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+parcelHelpers.export(exports, "initLightboxHandler", ()=>initLightboxHandler);
+const gsap = window.gsap;
+function initLightboxHandler(lightbox, imgObjects, canvas, getCurrentIntersect) {
+    let imgbox = null;
+    let imgcreated = false;
+    let tl = gsap.timeline();
+    function createImg(url) {
+        if (imgcreated === false) {
+            const newimg = document.createElement("img");
+            newimg.src = url;
+            newimg.classList.add("imagebox", "img-active");
+            lightbox.appendChild(newimg);
+            imgbox = document.querySelector(".imagebox");
+            imgcreated = true;
+            tl.to(".lightbox", {
+                opacity: 1,
+                zIndex: 999,
+                duration: 0.5
+            }).from(".imagebox", {
+                opacity: 0,
+                zIndex: 0,
+                duration: 0
+            });
+            imgbox.addEventListener("click", removeImage);
+        } else removeImage();
+    }
+    function removeImage() {
+        if (imgcreated === true) {
+            tl.to(".lightbox", {
+                opacity: 0,
+                duration: 1,
+                zIndex: 0
+            });
+            setTimeout(()=>{
+                imgbox.remove();
+                imgcreated = false;
+            }, 1000);
+        }
+    }
+    const handleTap = (event)=>{
+        event.preventDefault();
+        const currentIntersect = getCurrentIntersect();
+        if (currentIntersect) {
+            for (const imgObject of imgObjects)if (currentIntersect.object === imgObject) {
+                createImg(imgObject.material.map.source.data.currentSrc);
+                break;
+            }
+        } else removeImage();
+    };
+    const handleDoubleClick = ()=>{
+        const currentIntersect = getCurrentIntersect();
+        if (currentIntersect) {
+            for (const imgObject of imgObjects)if (currentIntersect.object === imgObject) {
+                createImg(imgObject.material.map.source.data.currentSrc);
+                break;
+            }
+        }
+    };
+    canvas.addEventListener("touchstart", handleTap);
+    canvas.addEventListener("dblclick", handleDoubleClick);
+}
+
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI"}],"8j0VF":[function(require,module,exports) {
+// trackballControls.js
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+parcelHelpers.export(exports, "initControls", ()=>initControls);
+var _trackballControlsJs = require("three/examples/jsm/controls/TrackballControls.js");
+function initControls(camera, canvas) {
+    const controls = new (0, _trackballControlsJs.TrackballControls)(camera, canvas);
+    controls.staticMoving = false;
+    controls.dynamicDampingFactor = 0.05;
+    controls.rotateSpeed = 0.2;
+    controls.noPan = true;
+    controls.zoomSpeed = 0.5;
+    controls.maxDistance = 100;
+    controls.minDistance = 0;
+    controls.update();
+    return controls;
+}
+
+},{"three/examples/jsm/controls/TrackballControls.js":"134Qq","@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI"}],"134Qq":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "TrackballControls", ()=>TrackballControls);
@@ -30704,534 +31880,6 @@ class TrackballControls extends (0, _three.EventDispatcher) {
     }
 }
 
-},{"three":"Br5dd","@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI"}],"daSyU":[function(require,module,exports) {
-var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
-parcelHelpers.defineInteropFlag(exports);
-parcelHelpers.export(exports, "Location", ()=>p);
-parcelHelpers.export(exports, "classify", ()=>e);
-parcelHelpers.export(exports, "cleanupAnimationClasses", ()=>f);
-parcelHelpers.export(exports, "createHistoryRecord", ()=>i);
-parcelHelpers.export(exports, "default", ()=>V);
-parcelHelpers.export(exports, "delegateEvent", ()=>o);
-parcelHelpers.export(exports, "escapeCssIdentifier", ()=>u);
-parcelHelpers.export(exports, "fetch", ()=>d);
-parcelHelpers.export(exports, "getCurrentUrl", ()=>n);
-parcelHelpers.export(exports, "getDataFromHtml", ()=>h);
-parcelHelpers.export(exports, "markSwupElements", ()=>g);
-parcelHelpers.export(exports, "nextTick", ()=>l);
-parcelHelpers.export(exports, "query", ()=>r);
-parcelHelpers.export(exports, "queryAll", ()=>a);
-parcelHelpers.export(exports, "toMs", ()=>c);
-parcelHelpers.export(exports, "updateHistoryRecord", ()=>s);
-var _delegateIt = require("delegate-it");
-var _delegateItDefault = parcelHelpers.interopDefault(_delegateIt);
-const e = (t, e)=>String(t).toLowerCase().replace(/[\s/_.]+/g, "-").replace(/[^\w-]+/g, "").replace(/--+/g, "-").replace(/^-+|-+$/g, "") || e || "", n = function(t) {
-    let { hash: e  } = void 0 === t ? {} : t;
-    return location.pathname + location.search + (e ? location.hash : "");
-}, i = function(t, e) {
-    void 0 === e && (e = {});
-    const i = {
-        url: t = t || n({
-            hash: !0
-        }),
-        random: Math.random(),
-        source: "swup",
-        ...e
-    };
-    history.pushState(i, "", t);
-}, s = function(t, e) {
-    void 0 === t && (t = null), void 0 === e && (e = {}), t = t || n({
-        hash: !0
-    });
-    const i = {
-        ...history.state,
-        url: t,
-        random: Math.random(),
-        source: "swup",
-        ...e
-    };
-    history.replaceState(i, "", t);
-}, o = function(e, n, i, s) {
-    let { base: o = document , ...r } = void 0 === s ? {} : s;
-    const a = (0, _delegateItDefault.default)(o, e, n, i, r);
-    return {
-        destroy: ()=>a.destroy()
-    };
-}, r = function(t, e) {
-    return void 0 === e && (e = document), e.querySelector(t);
-}, a = function(t, e) {
-    return void 0 === e && (e = document), Array.from(e.querySelectorAll(t));
-}, l = (t)=>{
-    requestAnimationFrame(()=>{
-        requestAnimationFrame(()=>{
-            t();
-        });
-    });
-}, u = (t)=>window.CSS && window.CSS.escape ? CSS.escape(t) : t, c = (t)=>1e3 * Number(t.slice(0, -1).replace(",", ".")), h = (t, e)=>{
-    var n, i;
-    let s = document.createElement("html");
-    s.innerHTML = t;
-    let o = [];
-    e.forEach((t)=>{
-        if (null == r(t, s)) return console.warn("[swup] Container " + t + " not found on page."), null;
-        a(t).length !== a(t, s).length && console.warn("[swup] Mismatched number of containers found on new page."), a(t).forEach((e, n)=>{
-            a(t, s)[n].setAttribute("data-swup", String(o.length)), o.push(a(t, s)[n].outerHTML);
-        });
-    });
-    const l = (null == (n = r("title", s)) ? void 0 : n.innerText) || "", u = null == (i = r("body", s)) ? void 0 : i.className;
-    return s.innerHTML = "", s = null, {
-        title: l,
-        pageClass: u,
-        blocks: o,
-        originalContent: t
-    };
-}, d = (t, e)=>{
-    const n = {
-        url: window.location.pathname + window.location.search,
-        method: "GET",
-        data: null,
-        headers: {}
-    }, { url: i , method: s , headers: o , data: r  } = {
-        ...n,
-        ...t
-    }, a = new XMLHttpRequest;
-    return a.onreadystatechange = function() {
-        4 === a.readyState && e(a);
-    }, a.open(s, i, !0), Object.entries(o).forEach((t)=>{
-        let [e, n] = t;
-        a.setRequestHeader(e, n);
-    }), a.send(r), a;
-};
-class p extends URL {
-    constructor(t, e){
-        void 0 === e && (e = document.baseURI), super(t.toString(), e);
-    }
-    get url() {
-        return this.pathname + this.search;
-    }
-    static fromElement(t) {
-        const e = t.getAttribute("href") || t.getAttribute("xlink:href");
-        return new p(e);
-    }
-    static fromUrl(t) {
-        return new p(t);
-    }
-}
-const g = (t, e)=>{
-    let n = 0;
-    e.forEach((e)=>{
-        null == r(e, t) ? console.warn("[swup] Container " + e + " not found on page.") : a(e).forEach((i, s)=>{
-            a(e, t)[s].setAttribute("data-swup", String(n)), n++;
-        });
-    });
-}, m = (t)=>/^to-/.test(t) || [
-        "is-changing",
-        "is-rendering",
-        "is-popstate"
-    ].includes(t), f = ()=>{
-    const t = document.documentElement.className.split(" ").filter(m);
-    document.documentElement.classList.remove(...t);
-};
-class v {
-    constructor(t){
-        this.pages = {}, this.last = null, this.swup = void 0, this.swup = t;
-    }
-    getCacheUrl(t) {
-        return this.swup.resolveUrl(p.fromUrl(t).url);
-    }
-    cacheUrl(t) {
-        t.url = this.getCacheUrl(t.url), t.url in this.pages == 0 && (this.pages[t.url] = t), t.responseURL = this.getCacheUrl(t.responseURL), this.last = this.pages[t.url], this.swup.log("Cache (" + Object.keys(this.pages).length + ")", this.pages);
-    }
-    getPage(t) {
-        return t = this.getCacheUrl(t), this.pages[t];
-    }
-    getCurrentPage() {
-        return this.getPage(n());
-    }
-    exists(t) {
-        return (t = this.getCacheUrl(t)) in this.pages;
-    }
-    empty() {
-        this.pages = {}, this.last = null, this.swup.log("Cache cleared");
-    }
-    remove(t) {
-        delete this.pages[this.getCacheUrl(t)];
-    }
-}
-const w = function(t) {
-    let { event: e , skipTransition: n  } = void 0 === t ? {} : t;
-    if (n) return this.triggerEvent("transitionEnd", e), this.cleanupAnimationClasses(), [
-        Promise.resolve()
-    ];
-    l(()=>{
-        this.triggerEvent("animationInStart"), document.documentElement.classList.remove("is-animating");
-    });
-    const i = this.getAnimationPromises("in");
-    return Promise.all(i).then(()=>{
-        this.triggerEvent("animationInDone"), this.triggerEvent("transitionEnd", e), this.cleanupAnimationClasses();
-    }), i;
-}, E = (t)=>t ? ("#" === t.charAt(0) && (t = t.substring(1)), t = decodeURIComponent(t), t = u(t), r("#" + t) || r("a[name='" + t + "']")) : null;
-let P = "transition", S = "transitionend", b = "animation", U = "animationend";
-function k(t) {
-    const e = this.options.animationSelector;
-    if (!1 === e) return [
-        Promise.resolve()
-    ];
-    const n = a(e, document.body);
-    return n.length ? n.map((t)=>(function(t, e, n) {
-            void 0 === n && (n = null);
-            const { type: i , timeout: s , propCount: o  } = function(t, e) {
-                void 0 === e && (e = null);
-                const n = window.getComputedStyle(t), i = P + "Duration", s = b + "Delay", o = b + "Duration", r = n[P + "Delay"].split(", "), a = (n[i] || "").split(", "), l = y(r, a), u = (n[s] || "").split(", "), c = (n[o] || "").split(", "), h = y(u, c);
-                let d = "", p = 0, g = 0;
-                return "transition" === e ? l > 0 && (d = "transition", p = l, g = a.length) : "animation" === e ? h > 0 && (d = "animation", p = h, g = c.length) : (p = Math.max(l, h), d = p > 0 ? l > h ? "transition" : "animation" : null, g = d ? "transition" === d ? a.length : c.length : 0), {
-                    type: d,
-                    timeout: p,
-                    propCount: g
-                };
-            }(t, n);
-            return i && s ? new Promise((e)=>{
-                const n = "transition" === i ? S : U, r = performance.now();
-                let a = 0;
-                const l = ()=>{
-                    t.removeEventListener(n, u), e();
-                }, u = (e)=>{
-                    if (e.target === t) {
-                        if (!((t)=>!!t.elapsedTime)(e)) throw new Error("Not a transition or animation event.");
-                        (performance.now() - r) / 1e3 < e.elapsedTime || ++a >= o && l();
-                    }
-                };
-                setTimeout(()=>{
-                    a < o && l();
-                }, s + 1), t.addEventListener(n, u);
-            }) : (console.warn("[swup] No CSS transition duration defined for element of selector " + e), Promise.resolve());
-        })(t, e)) : (console.warn("[swup] No animated elements found by selector " + e), [
-        Promise.resolve()
-    ]);
-}
-function y(t, e) {
-    for(; t.length < e.length;)t = t.concat(t);
-    return Math.max(...e.map((e, n)=>c(e) + c(t[n])));
-}
-void 0 === window.ontransitionend && void 0 !== window.onwebkittransitionend && (P = "WebkitTransition", S = "webkitTransitionEnd"), void 0 === window.onanimationend && void 0 !== window.onwebkitanimationend && (b = "WebkitAnimation", U = "webkitAnimationEnd");
-const L = function(t) {
-    const e = h(t.responseText, this.options.containers);
-    return e ? {
-        ...e,
-        responseURL: t.responseURL || window.location.href
-    } : (console.warn("[swup] Received page is invalid."), null);
-};
-function C(t) {
-    const e = this.options.requestHeaders, { url: n  } = t;
-    return this.cache.exists(n) ? (this.triggerEvent("pageRetrievedFromCache"), Promise.resolve(this.cache.getPage(n))) : new Promise((i, s)=>{
-        d({
-            ...t,
-            headers: e
-        }, (t)=>{
-            if (500 === t.status) return this.triggerEvent("serverError"), void s(n);
-            const e = this.getPageData(t);
-            if (!e || !e.blocks.length) return void s(n);
-            const o = {
-                ...e,
-                url: n
-            };
-            this.cache.cacheUrl(o), this.triggerEvent("pageLoaded"), i(o);
-        });
-    });
-}
-const T = function(t) {
-    let { event: e , skipTransition: n  } = void 0 === t ? {} : t;
-    const i = e instanceof PopStateEvent;
-    if (n) return this.triggerEvent("animationSkipped"), [
-        Promise.resolve()
-    ];
-    this.triggerEvent("animationOutStart"), document.documentElement.classList.add("is-changing", "is-leaving", "is-animating"), i && document.documentElement.classList.add("is-popstate");
-    const s = this.getAnimationPromises("out");
-    return Promise.all(s).then(()=>{
-        this.triggerEvent("animationOutDone");
-    }), s;
-};
-function H(t) {
-    const { url: e  } = t;
-    this.shouldIgnoreVisit(e) ? window.location.href = e : this.performPageLoad(t);
-}
-function R(t) {
-    const { url: s , event: o , customTransition: r  } = null != t ? t : {}, a = o instanceof PopStateEvent, l = this.shouldSkipTransition({
-        url: s,
-        event: o
-    });
-    this.triggerEvent("transitionStart", o), this.updateTransition(n(), s, r), null != r && document.documentElement.classList.add("to-" + e(r));
-    const u = this.leavePage({
-        event: o,
-        skipTransition: l
-    });
-    a || i(s + (this.scrollToElement || "")), this.currentPageUrl = n();
-    const c = this.fetchPage(t);
-    Promise.all([
-        c,
-        ...u
-    ]).then((t)=>{
-        let [e] = t;
-        this.renderPage(e, {
-            event: o,
-            skipTransition: l
-        });
-    }).catch((t)=>{
-        void 0 !== t && (this.options.skipPopStateHandling = ()=>(window.location = t, !0), history.go(-1));
-    });
-}
-const A = function(t) {
-    let { blocks: e , title: n  } = t;
-    return e.forEach((t, e)=>{
-        document.body.querySelector('[data-swup="' + e + '"]').outerHTML = t;
-    }), document.title = n, Promise.resolve();
-};
-function _(t, e) {
-    this._handlers[t] ? this._handlers[t].push(e) : console.warn("Unsupported event " + t + ".");
-}
-function x(t, e) {
-    t && e ? this._handlers[t].includes(e) ? this._handlers[t] = this._handlers[t].filter((t)=>t !== e) : console.warn("Handler for event '" + t + "' not found.") : t ? this._handlers[t] = [] : Object.keys(this._handlers).forEach((t)=>{
-        this._handlers[t] = [];
-    });
-}
-function q(t, e) {
-    this._handlers[t].forEach((t)=>{
-        try {
-            t(e);
-        } catch (t1) {
-            console.error(t1);
-        }
-    });
-    const n = new CustomEvent("swup:" + t, {
-        detail: t
-    });
-    document.dispatchEvent(n);
-}
-const D = function(t) {
-    var e;
-    if (null == (e = t) ? void 0 : e.isSwupPlugin) {
-        if (t.swup = this, !t._checkRequirements || t._checkRequirements()) return t._beforeMount && t._beforeMount(), t.mount(), this.plugins.push(t), this.plugins;
-    } else console.error("Not a swup plugin instance", t);
-};
-function I(t) {
-    const e = this.findPlugin(t);
-    if (e) return e.unmount(), e._afterUnmount && e._afterUnmount(), this.plugins = this.plugins.filter((t)=>t !== e), this.plugins;
-    console.error("No such plugin", e);
-}
-function M(t) {
-    return this.plugins.find((e)=>e === t || e.name === t);
-}
-const N = function(t, e) {
-    let { event: i , skipTransition: o  } = void 0 === e ? {} : e;
-    if (document.documentElement.classList.remove("is-leaving"), !this.isSameResolvedUrl(n(), t.url)) return;
-    const { url: r  } = p.fromUrl(t.responseURL);
-    this.isSameResolvedUrl(n(), r) || (this.cache.cacheUrl({
-        ...t,
-        url: r
-    }), this.currentPageUrl = n(), s(r)), o || document.documentElement.classList.add("is-rendering"), this.triggerEvent("willReplaceContent", i), this.replaceContent(t).then(()=>{
-        this.triggerEvent("contentReplaced", i), this.triggerEvent("pageView", i), this.options.cache || this.cache.empty(), this.enterPage({
-            event: i,
-            skipTransition: o
-        }), this.scrollToElement = null;
-    });
-};
-function W(t, e, n) {
-    this.transition = {
-        from: t,
-        to: e,
-        custom: n
-    };
-}
-function O(t) {
-    let { event: e  } = t;
-    return !(!(e instanceof PopStateEvent) || this.options.animateHistoryBrowsing);
-}
-class V {
-    constructor(t){
-        void 0 === t && (t = {}), this.version = "3.0.2", this._handlers = {
-            animationInDone: [],
-            animationInStart: [],
-            animationOutDone: [],
-            animationOutStart: [],
-            animationSkipped: [],
-            clickLink: [],
-            contentReplaced: [],
-            disabled: [],
-            enabled: [],
-            openPageInNewTab: [],
-            pageLoaded: [],
-            pageRetrievedFromCache: [],
-            pageView: [],
-            popState: [],
-            samePage: [],
-            samePageWithHash: [],
-            serverError: [],
-            transitionStart: [],
-            transitionEnd: [],
-            willReplaceContent: []
-        }, this.scrollToElement = null, this.options = void 0, this.plugins = [], this.transition = {}, this.cache = void 0, this.currentPageUrl = n(), this.delegatedListeners = {}, this.boundPopStateHandler = void 0, this.loadPage = H, this.performPageLoad = R, this.leavePage = T, this.renderPage = N, this.replaceContent = A, this.enterPage = w, this.triggerEvent = q, this.delegateEvent = o, this.on = _, this.off = x, this.updateTransition = W, this.shouldSkipTransition = O, this.getAnimationPromises = k, this.getPageData = L, this.fetchPage = C, this.getAnchorElement = E, this.log = ()=>{}, this.use = D, this.unuse = I, this.findPlugin = M, this.getCurrentUrl = n, this.cleanupAnimationClasses = f, this.defaults = {
-            animateHistoryBrowsing: !1,
-            animationSelector: '[class*="transition-"]',
-            cache: !0,
-            containers: [
-                "#swup"
-            ],
-            ignoreVisit: function(t, e) {
-                let { el: n  } = void 0 === e ? {} : e;
-                return !(null == n || !n.closest("[data-no-swup]"));
-            },
-            linkSelector: "a[href]",
-            plugins: [],
-            resolveUrl: (t)=>t,
-            requestHeaders: {
-                "X-Requested-With": "swup",
-                Accept: "text/html, application/xhtml+xml"
-            },
-            skipPopStateHandling: (t)=>{
-                var e;
-                return "swup" !== (null == (e = t.state) ? void 0 : e.source);
-            }
-        }, this.options = {
-            ...this.defaults,
-            ...t
-        }, this.boundPopStateHandler = this.popStateHandler.bind(this), this.cache = new v(this), this.enable();
-    }
-    enable() {
-        "undefined" != typeof Promise ? (this.delegatedListeners.click = o(this.options.linkSelector, "click", this.linkClickHandler.bind(this)), window.addEventListener("popstate", this.boundPopStateHandler), g(document.documentElement, this.options.containers), this.options.plugins.forEach((t)=>this.use(t)), s(), this.triggerEvent("enabled"), document.documentElement.classList.add("swup-enabled"), this.triggerEvent("pageView")) : console.warn("Promise is not supported");
-    }
-    destroy() {
-        this.delegatedListeners.click.destroy(), window.removeEventListener("popstate", this.boundPopStateHandler), this.cache.empty(), this.options.plugins.forEach((t)=>{
-            this.unuse(t);
-        }), a("[data-swup]").forEach((t)=>{
-            t.removeAttribute("data-swup");
-        }), this.off(), this.triggerEvent("disabled"), document.documentElement.classList.remove("swup-enabled");
-    }
-    shouldIgnoreVisit(t, e) {
-        let { el: n  } = void 0 === e ? {} : e;
-        const { origin: i , url: s , hash: o  } = p.fromUrl(t);
-        return i !== window.location.origin || !(!n || !this.triggerWillOpenNewWindow(n)) || !!this.options.ignoreVisit(s + o, {
-            el: n
-        });
-    }
-    linkClickHandler(t) {
-        const e = t.delegateTarget, { href: i , url: s , hash: o  } = p.fromElement(e);
-        if (this.shouldIgnoreVisit(i, {
-            el: e
-        })) return;
-        if (t.metaKey || t.ctrlKey || t.shiftKey || t.altKey) return void this.triggerEvent("openPageInNewTab", t);
-        if (0 !== t.button) return;
-        if (this.triggerEvent("clickLink", t), t.preventDefault(), !s || s === n()) return void this.handleLinkToSamePage(s, o, t);
-        if (this.isSameResolvedUrl(s, n())) return;
-        this.scrollToElement = o || null;
-        const r = e.getAttribute("data-swup-transition") || void 0;
-        this.performPageLoad({
-            url: s,
-            customTransition: r
-        });
-    }
-    handleLinkToSamePage(t, e, n) {
-        if (e) {
-            if (this.triggerEvent("samePageWithHash", n), !E(e)) return console.warn("Element for offset not found (#" + e + ")");
-            s(t + e);
-        } else this.triggerEvent("samePage", n);
-    }
-    triggerWillOpenNewWindow(t) {
-        return !!t.matches('[download], [target="_blank"]');
-    }
-    popStateHandler(t) {
-        var e, i;
-        if (this.options.skipPopStateHandling(t)) return;
-        if (this.isSameResolvedUrl(n(), this.currentPageUrl)) return;
-        const s = null != (e = null == (i = t.state) ? void 0 : i.url) ? e : location.href;
-        if (this.shouldIgnoreVisit(s)) return;
-        const { url: o , hash: r  } = p.fromUrl(s);
-        r ? this.scrollToElement = r : t.preventDefault(), this.triggerEvent("popState", t), this.options.animateHistoryBrowsing || (document.documentElement.classList.remove("is-animating"), f()), this.performPageLoad({
-            url: o,
-            event: t
-        });
-    }
-    resolveUrl(t) {
-        if ("function" != typeof this.options.resolveUrl) return console.warn("[swup] options.resolveUrl expects a callback function."), t;
-        const e = this.options.resolveUrl(t);
-        return e && "string" == typeof e ? e.startsWith("//") || e.startsWith("http") ? (console.warn("[swup] options.resolveUrl needs to return a relative url"), t) : e : (console.warn("[swup] options.resolveUrl needs to return a url"), t);
-    }
-    isSameResolvedUrl(t, e) {
-        return this.resolveUrl(t) === this.resolveUrl(e);
-    }
-}
-
-},{"delegate-it":"eZMvf","@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI"}],"eZMvf":[function(require,module,exports) {
-/** Keeps track of raw listeners added to the base elements to avoid duplication */ var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
-parcelHelpers.defineInteropFlag(exports);
-const ledger = new WeakMap();
-function editLedger(wanted, baseElement, callback, setup) {
-    var _a, _b;
-    if (!wanted && !ledger.has(baseElement)) return false;
-    const elementMap = (_a = ledger.get(baseElement)) !== null && _a !== void 0 ? _a : new WeakMap();
-    ledger.set(baseElement, elementMap);
-    if (!wanted && !ledger.has(baseElement)) return false;
-    const setups = (_b = elementMap.get(callback)) !== null && _b !== void 0 ? _b : new Set();
-    elementMap.set(callback, setups);
-    const existed = setups.has(setup);
-    if (wanted) setups.add(setup);
-    else setups.delete(setup);
-    return existed && wanted;
-}
-function isEventTarget(elements) {
-    return typeof elements.addEventListener === "function";
-}
-function safeClosest(event, selector) {
-    let target = event.target;
-    if (target instanceof Text) target = target.parentElement;
-    if (target instanceof Element && event.currentTarget instanceof Element) {
-        // `.closest()` may match ancestors of `currentTarget` but we only need its children
-        const closest = target.closest(selector);
-        if (closest && event.currentTarget.contains(closest)) return closest;
-    }
-}
-// This type isn't exported as a declaration, so it needs to be duplicated above
-function delegate(base, selector, type, callback, options) {
-    // Handle Selector-based usage
-    if (typeof base === "string") base = document.querySelectorAll(base);
-    // Handle Array-like based usage
-    if (!isEventTarget(base)) {
-        const subscriptions = Array.prototype.map.call(base, (element)=>delegate(element, selector, type, callback, options));
-        return {
-            destroy () {
-                for (const subscription of subscriptions)subscription.destroy();
-            }
-        };
-    }
-    // `document` should never be the base, it's just an easy way to define "global event listeners"
-    const baseElement = base instanceof Document ? base.documentElement : base;
-    // Handle the regular Element usage
-    const capture = Boolean(typeof options === "object" ? options.capture : options);
-    const listenerFn = (event)=>{
-        const delegateTarget = safeClosest(event, selector);
-        if (delegateTarget) {
-            event.delegateTarget = delegateTarget;
-            callback.call(baseElement, event);
-        }
-    };
-    // Drop unsupported `once` option https://github.com/fregante/delegate-it/pull/28#discussion_r863467939
-    if (typeof options === "object") delete options.once;
-    const setup = JSON.stringify({
-        selector,
-        type,
-        capture
-    });
-    const isAlreadyListening = editLedger(true, baseElement, callback, setup);
-    const delegateSubscription = {
-        destroy () {
-            baseElement.removeEventListener(type, listenerFn, options);
-            editLedger(false, baseElement, callback, setup);
-        }
-    };
-    if (!isAlreadyListening) baseElement.addEventListener(type, listenerFn, options);
-    return delegateSubscription;
-}
-exports.default = delegate;
-
-},{"@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI"}]},["7eoOY","6Bv9J"], "6Bv9J", "parcelRequire94c2")
+},{"three":"Br5dd","@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI"}]},["7eoOY","6Bv9J"], "6Bv9J", "parcelRequire94c2")
 
 //# sourceMappingURL=app.js.map

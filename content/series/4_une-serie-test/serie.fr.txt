@@ -1,0 +1,29 @@
+Title: Une série test
+
+----
+
+Titre: Titre de la série
+
+----
+
+Bgdark: false
+
+----
+
+Marges: false
+
+----
+
+Text: <p>Les cygnes noirs sont des événements rares impossibles à prévoir qui, s’ils se réalisent, ont des conséquences d’une portée considérable et exceptionnelle. Le 11 septembre ou la chute de l’URSS sont des cygnes noirs. Mais la pandémie et la crise écologique n’en sont pas. Elles étaient aussi prévisibles que notre cécité collective.</p><p>J’ai obtenu une dérogation pour sortir la nuit à Athènes et prendre des images pendant le confinement. Seul dans la rue, je me sentais enfermé dehors, dans un cauchemar post apocalyptique, de cette fameuse apocalypse que tout le monde nie malgré les rapports du GIEC. Je pensais documenter la pandémie, j’essayais de réagir à l’exceptionnel, mener une enquête fictive sur une autodestruction fantasmée de l’humanité, je ne me rendais pas encore vraiment compte que je déambulais parmi les signes, bien blancs et visibles ceux- ci, avant-coureurs de ce qui nous attend. Dans la nuit noire, sous les yeux fermés d’une planète entière, au milieu des statues et des débris, sidéré, j’avais le sentiment de révéler au flash les stigmates de notre extinction. J’étais seul dans les rues d’Athènes, je marchais entouré des vestiges d’un quotidien brutalement abandonné tout comme celui de Pompéi, dans des décors dignes des films post apocalyptiques qui me hantaient : La jetée (Chris Marker), L’armée des 12 singes (Terry Gilliam), La route (John Hillcoat), Take Shelter (Jeff Nichols). Je pensais alors explorer l’idée de ville fantôme. Mais quel fantôme plus effrayant que celui du futur?</p><p>(text-small:« Ce rapport (le 6e rapport du GIEC) devrait faire froid dans le dos à quiconque le lit. Il montre où nous en sommes et où nous allons avec le changement climatique : dans un trou qu’on continue de creuser. » Dave Reay Climatologue )</p>
+
+----
+
+Gallery: [{"attrs":{"presentation":"center"},"columns":[{"blocks":[{"content":{"image":["file://fI4btWwYRP0Yghdq"],"alt":"","bgcolor":"true","gridcol":"false","position":"serie-center"},"id":"e7212e4e-14c2-48cd-bf1b-9b74c07fac5f","isHidden":false,"type":"image"}],"id":"0da588f8-6c15-44c7-8350-2cfae92e8cf5","width":"1/1"}],"id":"56bdeaf6-c6e9-4a9e-abdb-ec18e1926a4a"}]
+
+----
+
+Video: 
+
+----
+
+Uuid: 7FYDjqx6J8cQIWm1

@@ -2,7 +2,9 @@
 
 namespace Kirby\Form;
 
+use Closure;
 use Exception;
+use Kirby\Cms\App;
 use Kirby\Exception\InvalidArgumentException;
 use Kirby\Toolkit\A;
 use Kirby\Toolkit\Component;
@@ -24,44 +26,37 @@ class Field extends Component
 {
 	/**
 	 * An array of all found errors
-	 *
-	 * @var array|null
 	 */
-	protected $errors;
+	protected array|null $errors = null;
 
 	/**
 	 * Parent collection with all fields of the current form
-	 *
-	 * @var \Kirby\Form\Fields|null
 	 */
-	protected $formFields;
+	protected Fields|null $formFields;
 
 	/**
 	 * Registry for all component mixins
-	 *
-	 * @var array
 	 */
-	public static $mixins = [];
+	public static array $mixins = [];
 
 	/**
 	 * Registry for all component types
-	 *
-	 * @var array
 	 */
-	public static $types = [];
+	public static array $types = [];
 
 	/**
-	 * Field constructor
-	 *
-	 * @param string $type
-	 * @param array $attrs
-	 * @param \Kirby\Form\Fields|null $formFields
 	 * @throws \Kirby\Exception\InvalidArgumentException
 	 */
-	public function __construct(string $type, array $attrs = [], ?Fields $formFields = null)
-	{
+	public function __construct(
+		string $type,
+		array $attrs = [],
+		Fields|null $formFields = null
+	) {
 		if (isset(static::$types[$type]) === false) {
-			throw new InvalidArgumentException('The field type "' . $type . '" does not exist');
+			throw new InvalidArgumentException([
+				'key'  => 'field.type.missing',
+				'data' => ['name' => $attrs['name'] ?? '-', 'type' => $type]
+			]);
 		}
 
 		if (isset($attrs['model']) === false) {
@@ -79,26 +74,23 @@ class Field extends Component
 
 	/**
 	 * Returns field api call
-	 *
-	 * @return mixed
 	 */
-	public function api()
+	public function api(): mixed
 	{
 		if (
 			isset($this->options['api']) === true &&
-			is_a($this->options['api'], 'Closure') === true
+			$this->options['api'] instanceof Closure
 		) {
 			return $this->options['api']->call($this);
 		}
+
+		return null;
 	}
 
 	/**
 	 * Returns field data
-	 *
-	 * @param bool $default
-	 * @return mixed
 	 */
-	public function data(bool $default = false)
+	public function data(bool $default = false): mixed
 	{
 		$save = $this->options['save'] ?? true;
 
@@ -112,7 +104,7 @@ class Field extends Component
 			return null;
 		}
 
-		if (is_a($save, 'Closure') === true) {
+		if ($save instanceof Closure) {
 			return $save->call($this, $value);
 		}
 
@@ -121,8 +113,6 @@ class Field extends Component
 
 	/**
 	 * Default props and computed of the field
-	 *
-	 * @return array
 	 */
 	public static function defaults(): array
 	{
@@ -260,15 +250,43 @@ class Field extends Component
 	}
 
 	/**
-	 * Creates a new field instance
-	 *
-	 * @param string $type
-	 * @param array $attrs
-	 * @param Fields|null $formFields
-	 * @return static
+	 * Returns optional dialog routes for the field
 	 */
-	public static function factory(string $type, array $attrs = [], ?Fields $formFields = null)
+	public function dialogs(): array
 	{
+		if (
+			isset($this->options['dialogs']) === true &&
+			$this->options['dialogs'] instanceof Closure
+		) {
+			return $this->options['dialogs']->call($this);
+		}
+
+		return [];
+	}
+
+	/**
+	 * Returns optional drawer routes for the field
+	 */
+	public function drawers(): array
+	{
+		if (
+			isset($this->options['drawers']) === true &&
+			$this->options['drawers'] instanceof Closure
+		) {
+			return $this->options['drawers']->call($this);
+		}
+
+		return [];
+	}
+
+	/**
+	 * Creates a new field instance
+	 */
+	public static function factory(
+		string $type,
+		array $attrs = [],
+		Fields|null $formFields = null
+	): static|FieldClass {
 		$field = static::$types[$type] ?? null;
 
 		if (is_string($field) && class_exists($field) === true) {
@@ -281,18 +299,14 @@ class Field extends Component
 
 	/**
 	 * Parent collection with all fields of the current form
-	 *
-	 * @return \Kirby\Form\Fields|null
 	 */
-	public function formFields(): ?Fields
+	public function formFields(): Fields|null
 	{
 		return $this->formFields;
 	}
 
 	/**
 	 * Validates when run for the first time and returns any errors
-	 *
-	 * @return array
 	 */
 	public function errors(): array
 	{
@@ -305,29 +319,31 @@ class Field extends Component
 
 	/**
 	 * Checks if the field is empty
-	 *
-	 * @param mixed ...$args
-	 * @return bool
 	 */
-	public function isEmpty(...$args): bool
+	public function isEmpty(mixed ...$args): bool
 	{
-		if (count($args) === 0) {
-			$value = $this->value();
-		} else {
-			$value = $args[0];
-		}
+		$value = match (count($args)) {
+			0       => $this->value(),
+			default => $args[0]
+		};
 
-		if (isset($this->options['isEmpty']) === true) {
-			return $this->options['isEmpty']->call($this, $value);
+		if ($empty = $this->options['isEmpty'] ?? null) {
+			return $empty->call($this, $value);
 		}
 
 		return in_array($value, [null, '', []], true);
 	}
 
 	/**
+	 * Checks if the field is hidden
+	 */
+	public function isHidden(): bool
+	{
+		return ($this->options['hidden'] ?? false) === true;
+	}
+
+	/**
 	 * Checks if the field is invalid
-	 *
-	 * @return bool
 	 */
 	public function isInvalid(): bool
 	{
@@ -336,8 +352,6 @@ class Field extends Component
 
 	/**
 	 * Checks if the field is required
-	 *
-	 * @return bool
 	 */
 	public function isRequired(): bool
 	{
@@ -346,8 +360,6 @@ class Field extends Component
 
 	/**
 	 * Checks if the field is valid
-	 *
-	 * @return bool
 	 */
 	public function isValid(): bool
 	{
@@ -356,20 +368,16 @@ class Field extends Component
 
 	/**
 	 * Returns the Kirby instance
-	 *
-	 * @return \Kirby\Cms\App
 	 */
-	public function kirby()
+	public function kirby(): App
 	{
 		return $this->model()->kirby();
 	}
 
 	/**
 	 * Returns the parent model
-	 *
-	 * @return mixed
 	 */
-	public function model()
+	public function model(): mixed
 	{
 		return $this->model;
 	}
@@ -381,31 +389,33 @@ class Field extends Component
 	 * - The field is required
 	 * - The field is currently empty
 	 * - The field is not currently inactive because of a `when` rule
-	 *
-	 * @return bool
 	 */
 	protected function needsValue(): bool
 	{
 		// check simple conditions first
-		if ($this->save() === false || $this->isRequired() === false || $this->isEmpty() === false) {
+		if (
+			$this->save() === false ||
+			$this->isRequired() === false ||
+			$this->isEmpty() === false
+		) {
 			return false;
 		}
 
 		// check the data of the relevant fields if there is a `when` option
-		if (empty($this->when) === false && is_array($this->when) === true) {
-			$formFields = $this->formFields();
+		if (
+			empty($this->when) === false &&
+			is_array($this->when) === true &&
+			$formFields = $this->formFields()
+		) {
+			foreach ($this->when as $field => $value) {
+				$field      = $formFields->get($field);
+				$inputValue = $field?->value() ?? '';
 
-			if ($formFields !== null) {
-				foreach ($this->when as $field => $value) {
-					$field      = $formFields->get($field);
-					$inputValue = $field !== null ? $field->value() : '';
-
-					// if the input data doesn't match the requested `when` value,
-					// that means that this field is not required and can be saved
-					// (*all* `when` conditions must be met for this field to be required)
-					if ($inputValue !== $value) {
-						return false;
-					}
+				// if the input data doesn't match the requested `when` value,
+				// that means that this field is not required and can be saved
+				// (*all* `when` conditions must be met for this field to be required)
+				if ($inputValue !== $value) {
+					return false;
 				}
 			}
 		}
@@ -416,8 +426,6 @@ class Field extends Component
 
 	/**
 	 * Checks if the field is saveable
-	 *
-	 * @return bool
 	 */
 	public function save(): bool
 	{
@@ -426,8 +434,6 @@ class Field extends Component
 
 	/**
 	 * Converts the field to a plain array
-	 *
-	 * @return array
 	 */
 	public function toArray(): array
 	{
@@ -435,6 +441,7 @@ class Field extends Component
 
 		unset($array['model']);
 
+		$array['hidden']    = $this->isHidden();
 		$array['saveable']  = $this->save();
 		$array['signature'] = md5(json_encode($array));
 
@@ -448,8 +455,6 @@ class Field extends Component
 
 	/**
 	 * Runs the validations defined for the field
-	 *
-	 * @return void
 	 */
 	protected function validate(): void
 	{
@@ -472,7 +477,7 @@ class Field extends Component
 				continue;
 			}
 
-			if (is_a($validation, 'Closure') === true) {
+			if ($validation instanceof Closure) {
 				try {
 					$validation->call($this, $this->value());
 				} catch (Exception $e) {
@@ -497,10 +502,8 @@ class Field extends Component
 	/**
 	 * Returns the value of the field if saveable
 	 * otherwise it returns null
-	 *
-	 * @return mixed
 	 */
-	public function value()
+	public function value(): mixed
 	{
 		return $this->save() ? $this->value : null;
 	}

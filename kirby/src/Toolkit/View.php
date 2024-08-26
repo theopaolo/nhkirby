@@ -18,36 +18,17 @@ use Throwable;
 class View
 {
 	/**
-	 * The absolute path to the view file
-	 *
-	 * @var string
-	 */
-	protected $file;
-
-	/**
-	 * The view data
-	 *
-	 * @var array
-	 */
-	protected $data = [];
-
-	/**
 	 * Creates a new view object
-	 *
-	 * @param string $file
-	 * @param array $data
 	 */
-	public function __construct(string $file, array $data = [])
-	{
-		$this->file = $file;
-		$this->data = $data;
+	public function __construct(
+		// The absolute path to the view file
+		protected string $file,
+		protected array $data = []
+	) {
 	}
 
 	/**
-	 * Returns the view's data array
-	 * without globals.
-	 *
-	 * @return array
+	 * Returns the view's data array without globals
 	 */
 	public function data(): array
 	{
@@ -56,8 +37,6 @@ class View
 
 	/**
 	 * Checks if the template file exists
-	 *
-	 * @return bool
 	 */
 	public function exists(): bool
 	{
@@ -66,18 +45,14 @@ class View
 
 	/**
 	 * Returns the view file
-	 *
-	 * @return string|false
 	 */
-	public function file()
+	public function file(): string
 	{
 		return $this->file;
 	}
 
 	/**
 	 * Creates an error message for the missing view exception
-	 *
-	 * @return string
 	 */
 	protected function missingViewMessage(): string
 	{
@@ -86,8 +61,6 @@ class View
 
 	/**
 	 * Renders the view
-	 *
-	 * @return string
 	 */
 	public function render(): string
 	{
@@ -97,7 +70,6 @@ class View
 
 		ob_start();
 
-		$exception = null;
 		try {
 			F::load($this->file(), null, $this->data());
 		} catch (Throwable $e) {
@@ -107,17 +79,15 @@ class View
 		$content = ob_get_contents();
 		ob_end_clean();
 
-		if ($exception === null) {
-			return $content;
+		if (($exception ?? null) !== null) {
+			throw $exception;
 		}
 
-		throw $exception;
+		return $content;
 	}
 
 	/**
-	 * Alias for View::render()
-	 *
-	 * @return string
+	 * @see ::render()
 	 */
 	public function toString(): string
 	{
@@ -128,7 +98,7 @@ class View
 	 * Magic string converter to enable
 	 * converting view objects to string
 	 *
-	 * @return string
+	 * @see ::render()
 	 */
 	public function __toString(): string
 	{

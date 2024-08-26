@@ -2,6 +2,8 @@
 
 namespace Kirby\Http\Request;
 
+use SensitiveParameter;
+
 /**
  * Base class for auth types
  *
@@ -14,27 +16,16 @@ namespace Kirby\Http\Request;
 abstract class Auth
 {
 	/**
-	 * Raw authentication data after the first space
-	 * in the `Authorization` header
-	 *
-	 * @var string
+	 * @param string $data Raw authentication data after the first space in the `Authorization` header
 	 */
-	protected $data;
-
-	/**
-	 * Constructor
-	 *
-	 * @param string $data
-	 */
-	public function __construct(string $data)
-	{
-		$this->data = $data;
+	public function __construct(
+		#[SensitiveParameter]
+		protected string $data
+	) {
 	}
 
 	/**
 	 * Converts the object to a string
-	 *
-	 * @return string
 	 */
 	public function __toString(): string
 	{
@@ -44,8 +35,6 @@ abstract class Auth
 	/**
 	 * Returns the raw authentication data after the
 	 * first space in the `Authorization` header
-	 *
-	 * @return string
 	 */
 	public function data(): string
 	{
@@ -54,8 +43,6 @@ abstract class Auth
 
 	/**
 	 * Returns the name of the auth type (lowercase)
-	 *
-	 * @return string
 	 */
 	abstract public function type(): string;
 }

@@ -2,6 +2,8 @@
 
 namespace Kirby\Parsley\Schema;
 
+use DOMElement;
+use DOMText;
 use Kirby\Parsley\Element;
 use Kirby\Toolkit\Str;
 
@@ -19,22 +21,22 @@ use Kirby\Toolkit\Str;
  */
 class Blocks extends Plain
 {
-	/**
-	 * @param \Kirby\Parsley\Element $node
-	 * @return array
-	 */
 	public function blockquote(Element $node): array
 	{
-		$citation = null;
-		$text     = [];
+		$text = [];
 
 		// get all the text for the quote
 		foreach ($node->children() as $child) {
-			if (is_a($child, 'DOMText') === true) {
+			if ($child instanceof DOMText) {
 				$text[] = trim($child->textContent);
 			}
-			if (is_a($child, 'DOMElement') === true && $child->tagName !== 'footer') {
-				$text[] = (new Element($child))->innerHTML($this->marks());
+
+			if (
+				$child instanceof DOMElement &&
+				$child->tagName !== 'footer'
+			) {
+				$element = new Element($child);
+				$text[]  = $element->innerHTML($this->marks());
 			}
 		}
 
@@ -42,9 +44,7 @@ class Blocks extends Plain
 		$text = implode('', array_filter($text));
 
 		// get the citation from the footer
-		if ($footer = $node->find('footer')) {
-			$citation = $footer->innerHTML($this->marks());
-		}
+		$citation = $node->find('footer')?->innerHTML($this->marks());
 
 		return [
 			'content' => [
@@ -58,13 +58,10 @@ class Blocks extends Plain
 	/**
 	 * Creates the fallback block type
 	 * if no other block can be found
-	 *
-	 * @param \Kirby\Parsley\Element|string $element
-	 * @return array|null
 	 */
-	public function fallback($element): ?array
+	public function fallback(Element|string $element): array|null
 	{
-		if (is_a($element, Element::class) === true) {
+		if ($element instanceof Element) {
 			$html = $element->innerHtml();
 
 			// wrap the inner HTML in a p tag if it doesn't
@@ -94,9 +91,6 @@ class Blocks extends Plain
 
 	/**
 	 * Converts a heading element to a heading block
-	 *
-	 * @param \Kirby\Parsley\Element $node
-	 * @return array
 	 */
 	public function heading(Element $node): array
 	{
@@ -117,21 +111,14 @@ class Blocks extends Plain
 		];
 	}
 
-	/**
-	 * @param \Kirby\Parsley\Element $node
-	 * @return array
-	 */
 	public function iframe(Element $node): array
 	{
-		$caption = null;
-		$src     = $node->attr('src');
+		$src        = $node->attr('src');
+		$figcaption = $node->find('ancestor::figure[1]//figcaption');
+		$caption    = $figcaption?->innerHTML($this->marks());
 
-		if ($figcaption = $node->find('ancestor::figure[1]//figcaption')) {
-			$caption = $figcaption->innerHTML($this->marks());
-
-			// avoid parsing the caption twice
-			$figcaption->remove();
-		}
+		// avoid parsing the caption twice
+		$figcaption?->remove();
 
 		// reverse engineer video URLs
 		if (preg_match('!player.vimeo.com\/video\/([0-9]+)!i', $src, $array) === 1) {
@@ -163,25 +150,14 @@ class Blocks extends Plain
 		];
 	}
 
-	/**
-	 * @param \Kirby\Parsley\Element $node
-	 * @return array
-	 */
 	public function img(Element $node): array
 	{
-		$caption = null;
-		$link = null;
+		$link       = $node->find('ancestor::a')?->attr('href');
+		$figcaption = $node->find('ancestor::figure[1]//figcaption');
+		$caption    = $figcaption?->innerHTML($this->marks());
 
-		if ($figcaption = $node->find('ancestor::figure[1]//figcaption')) {
-			$caption = $figcaption->innerHTML($this->marks());
-
-			// avoid parsing the caption twice
-			$figcaption->remove();
-		}
-
-		if ($a = $node->find('ancestor::a')) {
-			$link = $a->attr('href');
-		}
+		// avoid parsing the caption twice
+		$figcaption?->remove();
 
 		return [
 			'content' => [
@@ -197,9 +173,6 @@ class Blocks extends Plain
 
 	/**
 	 * Converts a list element to HTML
-	 *
-	 * @param \Kirby\Parsley\Element $node
-	 * @return string
 	 */
 	public function list(Element $node): string
 	{
@@ -209,30 +182,30 @@ class Blocks extends Plain
 			$innerHtml = '';
 
 			foreach ($li->children() as $child) {
-				if (is_a($child, 'DOMText') === true) {
+				if ($child instanceof DOMText) {
 					$innerHtml .= $child->textContent;
-				} elseif (is_a($child, 'DOMElement') === true) {
+				} elseif ($child instanceof DOMElement) {
 					$child = new Element($child);
-
-					if (in_array($child->tagName(), ['ul', 'ol']) === true) {
-						$innerHtml .= $this->list($child);
-					} else {
-						$innerHtml .= $child->innerHTML($this->marks());
-					}
+					$list  = ['ul', 'ol'];
+					$innerHtml .= match (in_array($child->tagName(), $list)) {
+						true    => $this->list($child),
+						default => $child->innerHTML($this->marks())
+					};
 				}
 			}
 
 			$html[] = '<li>' . trim($innerHtml) . '</li>';
 		}
 
-		return '<' . $node->tagName() . '>' . implode($html) . '</' . $node->tagName() . '>';
+		$outerHtml  = '<' . $node->tagName() . '>';
+		$outerHtml .= implode($html);
+		$outerHtml .= '</' . $node->tagName() . '>';
+		return $outerHtml;
 	}
 
 	/**
 	 * Returns a list of allowed inline marks
 	 * and their parsing rules
-	 *
-	 * @return array
 	 */
 	public function marks(): array
 	{
@@ -241,7 +214,7 @@ class Blocks extends Plain
 				'tag' => 'a',
 				'attrs' => ['href', 'rel', 'target', 'title'],
 				'defaults' => [
-					'rel' => 'noopener noreferrer'
+					'rel' => 'noreferrer'
 				]
 			],
 			[
@@ -291,114 +264,79 @@ class Blocks extends Plain
 	 * their parsing rules
 	 *
 	 * @codeCoverageIgnore
-	 * @return array
 	 */
 	public function nodes(): array
 	{
 		return [
 			[
 				'tag' => 'blockquote',
-				'parse' => function (Element $node) {
-					return $this->blockquote($node);
-				}
+				'parse' => fn (Element $node) => $this->blockquote($node)
 			],
 			[
 				'tag' => 'h1',
-				'parse' => function (Element $node) {
-					return $this->heading($node);
-				}
+				'parse' => fn (Element $node) => $this->heading($node)
 			],
 			[
 				'tag' => 'h2',
-				'parse' => function (Element $node) {
-					return $this->heading($node);
-				}
+				'parse' => fn (Element $node) => $this->heading($node)
 			],
 			[
 				'tag' => 'h3',
-				'parse' => function (Element $node) {
-					return $this->heading($node);
-				}
+				'parse' => fn (Element $node) => $this->heading($node)
 			],
 			[
 				'tag' => 'h4',
-				'parse' => function (Element $node) {
-					return $this->heading($node);
-				}
+				'parse' => fn (Element $node) => $this->heading($node)
 			],
 			[
 				'tag' => 'h5',
-				'parse' => function (Element $node) {
-					return $this->heading($node);
-				}
+				'parse' => fn (Element $node) => $this->heading($node)
 			],
 			[
 				'tag' => 'h6',
-				'parse' => function (Element $node) {
-					return $this->heading($node);
-				}
+				'parse' => fn (Element $node) => $this->heading($node)
 			],
 			[
 				'tag' => 'hr',
-				'parse' => function (Element $node) {
-					return [
-						'type' => 'line'
-					];
-				}
+				'parse' => fn (Element $node) => ['type' => 'line']
 			],
 			[
 				'tag' => 'iframe',
-				'parse' => function (Element $node) {
-					return $this->iframe($node);
-				}
+				'parse' => fn (Element $node) => $this->iframe($node)
 			],
 			[
 				'tag' => 'img',
-				'parse' => function (Element $node) {
-					return $this->img($node);
-				}
+				'parse' => fn (Element $node) => $this->img($node)
 			],
 			[
 				'tag' => 'ol',
-				'parse' => function (Element $node) {
-					return [
-						'content' => [
-							'text' => $this->list($node)
-						],
-						'type' => 'list',
-					];
-				}
+				'parse' => fn (Element $node) => [
+					'content' => [
+						'text' => $this->list($node)
+					],
+					'type' => 'list',
+				]
 			],
 			[
 				'tag'   => 'pre',
-				'parse' => function (Element $node) {
-					return $this->pre($node);
-				}
+				'parse' => fn (Element $node) => $this->pre($node)
 			],
 			[
 				'tag' => 'table',
-				'parse' => function (Element $node) {
-					return $this->table($node);
-				}
+				'parse' => fn (Element $node) => $this->table($node)
 			],
 			[
 				'tag' => 'ul',
-				'parse' => function (Element $node) {
-					return [
-						'content' => [
-							'text' => $this->list($node)
-						],
-						'type' => 'list',
-					];
-				}
+				'parse' => fn (Element $node) => [
+					'content' => [
+						'text' => $this->list($node)
+					],
+					'type' => 'list',
+				]
 			],
 		];
 	}
 
-	/**
-	 * @param \Kirby\Parsley\Element $node
-	 * @return array
-	 */
 	public function pre(Element $node): array
 	{
 		$language = 'text';
@@ -421,10 +359,6 @@ class Blocks extends Plain
 		];
 	}
 
-	/**
-	 * @param \Kirby\Parsley\Element $node
-	 * @return array
-	 */
 	public function table(Element $node): array
 	{
 		return [

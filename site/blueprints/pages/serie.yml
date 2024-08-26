@@ -13,12 +13,12 @@ tabs:
             type:  text
             width: 2/4
           bgdark:
-            label: Couleur de fond
+            label: Fond de la série
             type:  toggle
             text:
-              - light
-              - dark
-            help: Default is light
+              - blanc
+              - noir
+            help: Blanc par défaut
             width: 1/4
           marges:
             label: Marges
@@ -26,7 +26,7 @@ tabs:
             text:
               - avec
               - sans
-            help: Default is avec
+            help: Avec par défaut
             width: 1/4
           text:
             label: Introduction

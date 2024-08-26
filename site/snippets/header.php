@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,5 +15,6 @@
     <meta name="msapplication-TileColor" content="#da532c">
     <meta name="theme-color" content="#ffffff">
     <?= css('assets/css/style.css') ?>
+    <?php if($page->template() == "serie"): ?>  <?= css('assets/css/plyr.css') ?> <?php endif ?>
 </head>
 <body <?php if($page->template() == "serie"):?>class='scroll'<?php endif?> >

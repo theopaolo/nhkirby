@@ -6,6 +6,7 @@ use Closure;
 use Kirby\Exception\InvalidArgumentException;
 use Kirby\Toolkit\Collection as BaseCollection;
 use Kirby\Toolkit\Str;
+use Kirby\Uuid\Uuid;
 
 /**
  * The Collection class serves as foundation
@@ -65,17 +66,27 @@ class Collection extends BaseCollection
 	}
 
 	/**
-	 * Internal setter for each object in the Collection.
-	 * This takes care of Component validation and of setting
-	 * the collection prop on each object correctly.
+	 * Internal setter for each object in the Collection;
+	 * override from the Toolkit Collection is needed to
+	 * make the CMS collections case-sensitive;
+	 * child classes can override it again to add validation
+	 * and custom behavior depending on the object type
 	 *
-	 * @param string $id
 	 * @param object $object
-	 * @return void
 	 */
 	public function __set(string $id, $object): void
 	{
 		$this->data[$id] = $object;
+	}
+
+	/**
+	 * Internal remover for each object in the Collection;
+	 * override from the Toolkit Collection is needed to
+	 * make the CMS collections case-sensitive
+	 */
+	public function __unset($id)
+	{
+		unset($this->data[$id]);
 	}
 
 	/**
@@ -87,9 +98,12 @@ class Collection extends BaseCollection
 	 */
 	public function add($object)
 	{
-		if (is_a($object, self::class) === true) {
+		if ($object instanceof self) {
 			$this->data = array_merge($this->data, $object->data);
-		} elseif (is_object($object) === true && method_exists($object, 'id') === true) {
+		} elseif (
+			is_object($object) === true &&
+			method_exists($object, 'id') === true
+		) {
 			$this->__set($object->id(), $object);
 		} else {
 			$this->append($object);
@@ -110,14 +124,34 @@ class Collection extends BaseCollection
 	{
 		if (count($args) === 1) {
 			// try to determine the key from the provided item
-			if (is_object($args[0]) === true && is_callable([$args[0], 'id']) === true) {
+			if (
+				is_object($args[0]) === true &&
+				is_callable([$args[0], 'id']) === true
+			) {
 				return parent::append($args[0]->id(), $args[0]);
-			} else {
-				return parent::append($args[0]);
 			}
+
+			return parent::append($args[0]);
 		}
 
 		return parent::append(...$args);
+	}
+
+	/**
+	 * Find a single element by an attribute and its value
+	 *
+	 * @param mixed $value
+	 * @return mixed|null
+	 */
+	public function findBy(string $attribute, $value)
+	{
+		// $value: cast UUID object to string to allow uses
+		// like `$pages->findBy('related', $page->uuid())`
+		if ($value instanceof Uuid) {
+			$value = $value->toString();
+		}
+
+		return parent::findBy($attribute, $value);
 	}
 
 	/**
@@ -125,11 +159,11 @@ class Collection extends BaseCollection
 	 * with an item for each group and a collection for each group.
 	 *
 	 * @param string|Closure $field
-	 * @param bool $i Ignore upper/lowercase for group names
+	 * @param bool $caseInsensitive Ignore upper/lowercase for group names
 	 * @return \Kirby\Cms\Collection
 	 * @throws \Kirby\Exception\Exception
 	 */
-	public function group($field, bool $i = true)
+	public function group($field, bool $caseInsensitive = true)
 	{
 		if (is_string($field) === true) {
 			$groups = new Collection([], $this->parent());
@@ -142,8 +176,10 @@ class Collection extends BaseCollection
 					throw new InvalidArgumentException('Invalid grouping value for key: ' . $key);
 				}
 
+				$value = (string)$value;
+
 				// ignore upper/lowercase for group names
-				if ($i) {
+				if ($caseInsensitive === true) {
 					$value = Str::lower($value);
 				}
 
@@ -159,7 +195,7 @@ class Collection extends BaseCollection
 			return $groups;
 		}
 
-		return parent::group($field, $i);
+		return parent::group($field, $caseInsensitive);
 	}
 
 	/**
@@ -167,7 +203,6 @@ class Collection extends BaseCollection
 	 * is in the collection
 	 *
 	 * @param string|object $key
-	 * @return bool
 	 */
 	public function has($key): bool
 	{
@@ -184,9 +219,8 @@ class Collection extends BaseCollection
 	 * or ids and then search accordingly.
 	 *
 	 * @param string|object $needle
-	 * @return int
 	 */
-	public function indexOf($needle): int
+	public function indexOf($needle): int|false
 	{
 		if (is_string($needle) === true) {
 			return array_search($needle, $this->keys());
@@ -208,7 +242,9 @@ class Collection extends BaseCollection
 		foreach ($keys as $key) {
 			if (is_array($key) === true) {
 				return $this->not(...$key);
-			} elseif (is_a($key, 'Kirby\Toolkit\Collection') === true) {
+			}
+
+			if ($key instanceof BaseCollection) {
 				$collection = $collection->not(...$key->keys());
 			} elseif (is_object($key) === true) {
 				$key = $key->id();
@@ -224,20 +260,31 @@ class Collection extends BaseCollection
 	 * Add pagination and return a sliced set of data.
 	 *
 	 * @param mixed ...$arguments
-	 * @return \Kirby\Cms\Collection
+	 * @return $this|static
 	 */
 	public function paginate(...$arguments)
 	{
 		$this->pagination = Pagination::for($this, ...$arguments);
 
 		// slice and clone the collection according to the pagination
-		return $this->slice($this->pagination->offset(), $this->pagination->limit());
+		return $this->slice(
+			$this->pagination->offset(),
+			$this->pagination->limit()
+		);
+	}
+
+	/**
+	 * Get the pagination object
+	 *
+	 * @return \Kirby\Cms\Pagination|null
+	 */
+	public function pagination()
+	{
+		return $this->pagination;
 	}
 
 	/**
 	 * Returns the parent model
-	 *
-	 * @return \Kirby\Cms\Model
 	 */
 	public function parent()
 	{
@@ -256,11 +303,14 @@ class Collection extends BaseCollection
 	{
 		if (count($args) === 1) {
 			// try to determine the key from the provided item
-			if (is_object($args[0]) === true && is_callable([$args[0], 'id']) === true) {
+			if (
+				is_object($args[0]) === true &&
+				is_callable([$args[0], 'id']) === true
+			) {
 				return parent::prepend($args[0]->id(), $args[0]);
-			} else {
-				return parent::prepend($args[0]);
 			}
+
+			return parent::prepend($args[0]);
 		}
 
 		return parent::prepend(...$args);
@@ -271,7 +321,6 @@ class Collection extends BaseCollection
 	 * offset, limit, search and paginate on the collection.
 	 * Any part of the query is optional.
 	 *
-	 * @param array $arguments
 	 * @return static
 	 */
 	public function query(array $arguments = [])
@@ -314,13 +363,11 @@ class Collection extends BaseCollection
 
 	/**
 	 * Searches the collection
-	 *
-	 * @param string|null $query
-	 * @param array $params
-	 * @return self
 	 */
-	public function search(string $query = null, $params = [])
-	{
+	public function search(
+		string $query = null,
+		string|array $params = []
+	): static {
 		return Search::collection($this, $query, $params);
 	}
 
@@ -328,9 +375,6 @@ class Collection extends BaseCollection
 	 * Converts all objects in the collection
 	 * to an array. This can also take a callback
 	 * function to further modify the array result.
-	 *
-	 * @param \Closure|null $map
-	 * @return array
 	 */
 	public function toArray(Closure $map = null): array
 	{

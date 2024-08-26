@@ -19,33 +19,25 @@ abstract class Sql
 {
 	/**
 	 * List of literals which should not be escaped in queries
-	 *
-	 * @var array
 	 */
-	public static $literals = ['NOW()', null];
+	public static array $literals = ['NOW()', null];
 
 	/**
 	 * The parent database connection
-	 *
-	 * @var \Kirby\Database\Database
 	 */
-	protected $database;
+	protected Database $database;
 
 	/**
 	 * List of used bindings; used to avoid
 	 * duplicate binding names
-	 *
-	 * @var array
 	 */
-	protected $bindings = [];
+	protected array $bindings = [];
 
 	/**
 	 * Constructor
 	 * @codeCoverageIgnore
-	 *
-	 * @param \Kirby\Database\Database $database
 	 */
-	public function __construct($database)
+	public function __construct(Database $database)
 	{
 		$this->database = $database;
 	}
@@ -80,7 +72,6 @@ abstract class Sql
 	 * the query needs to return rows with a column `name`
 	 *
 	 * @param string $table Table name
-	 * @return array
 	 */
 	abstract public function columns(string $table): array;
 
@@ -118,10 +109,10 @@ abstract class Sql
 	 * @param bool $enforceQualified If true, a qualified identifier is returned in all cases
 	 * @return string|null Identifier or null if the table or column is invalid
 	 */
-	public function columnName(string $table, string $column, bool $enforceQualified = false): ?string
+	public function columnName(string $table, string $column, bool $enforceQualified = false): string|null
 	{
 		// ensure we have clean $table and $column values without qualified identifiers
-		list($table, $column) = $this->splitIdentifier($table, $column);
+		[$table, $column] = $this->splitIdentifier($table, $column);
 
 		// combine the identifiers again
 		if ($this->database->validateColumn($table, $column) === true) {
@@ -136,29 +127,26 @@ abstract class Sql
 	 * Abstracted column types to simplify table
 	 * creation for multiple database drivers
 	 * @codeCoverageIgnore
-	 *
-	 * @return array
 	 */
 	public function columnTypes(): array
 	{
 		return [
 			'id'        => '{{ name }} INT(11) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY',
-			'varchar'   => '{{ name }} varchar(255) {{ null }} {{ default }} {{ unique }}',
+			'varchar'   => '{{ name }} varchar({{ size }}) {{ null }} {{ default }} {{ unique }}',
 			'text'      => '{{ name }} TEXT {{ unique }}',
-			'int'       => '{{ name }} INT(11) UNSIGNED {{ null }} {{ default }} {{ unique }}',
+			'int'       => '{{ name }} INT(11) {{ unsigned }} {{ null }} {{ default }} {{ unique }}',
 			'timestamp' => '{{ name }} TIMESTAMP {{ null }} {{ default }} {{ unique }}',
-			'bool'      => '{{ name }} TINYINT(1) {{ null }} {{ default }} {{ unique }}'
+			'bool'      => '{{ name }} TINYINT(1) {{ null }} {{ default }} {{ unique }}',
+			'float'     => '{{ name }} DOUBLE {{ null }} {{ default }} {{ unique }}',
+			'decimal'   => '{{ name }} DECIMAL({{ precision }}, {{ decimalPlaces }}) {{ null }} {{ default }} {{ unique }}'
 		];
 	}
 
 	/**
 	 * Combines an identifier (table and column)
 	 *
-	 * @param $table string
-	 * @param $column string
 	 * @param $values bool Whether the identifier is going to be used for a VALUES clause;
-	 *                        only relevant for SQLite
-	 * @return string
+	 *                only relevant for SQLite
 	 */
 	public function combineIdentifier(string $table, string $column, bool $values = false): string
 	{
@@ -171,6 +159,10 @@ abstract class Sql
 	 * @param string $name Column name
 	 * @param array $column Column definition array; valid keys:
 	 *                      - `type` (required): Column template to use
+	 *                      - `unsigned`: Whether an int column is signed or unsigned (boolean)
+	 *                      - `size`: The size of varchar (int)
+	 *                      - `precision`: The precision of a decimal type
+	 *                      - `decimalPlaces`: The number of decimal places for a decimal type
 	 *                      - `null`: Whether the column may be NULL (boolean)
 	 *                      - `key`: Index this column is part of; special values `'primary'` for PRIMARY KEY and `true` for automatic naming
 	 *                      - `unique`: Whether the index (or if not set the column itself) has a UNIQUE constraint
@@ -205,6 +197,13 @@ abstract class Sql
 			}
 		}
 
+		// unsigned (defaults to true for backwards compatibility)
+		if (isset($column['unsigned']) === true && $column['unsigned'] === false) {
+			$unsigned = '';
+		} else {
+			$unsigned = 'UNSIGNED';
+		}
+
 		// unique
 		$uniqueKey = false;
 		$uniqueColumn = null;
@@ -222,11 +221,15 @@ abstract class Sql
 		$columnDefault = $this->columnDefault($name, $column);
 
 		$query = trim(Str::template($template, [
-			'name'    => $this->quoteIdentifier($name),
-			'null'    => $null,
-			'default' => $columnDefault['query'],
-			'unique'  => $uniqueColumn
-		], ['fallback' => '']));
+			'name'           => $this->quoteIdentifier($name),
+			'unsigned'       => $unsigned,
+			'size'           => $column['size'] ?? 255,
+			'precision'      => $column['precision'] ?? 14,
+			'decimalPlaces'  => $column['decimalPlaces'] ?? 4,
+			'null'           => $null,
+			'default'        => $columnDefault['query'],
+			'unique'         => $uniqueColumn
+		], ['fallback'  => '']));
 
 		return [
 			'query'    => $query,
@@ -316,7 +319,6 @@ abstract class Sql
 	 * Builds a DELETE clause
 	 *
 	 * @param array $params List of parameters for the DELETE clause. See defaults for more info.
-	 * @return array
 	 */
 	public function delete(array $params = []): array
 	{
@@ -344,9 +346,6 @@ abstract class Sql
 
 	/**
 	 * Creates the sql for dropping a single table
-	 *
-	 * @param string $table
-	 * @return array
 	 */
 	public function dropTable(string $table): array
 	{
@@ -359,13 +358,8 @@ abstract class Sql
 	/**
 	 * Extends a given query and bindings
 	 * by reference
-	 *
-	 * @param array $query
-	 * @param array $bindings
-	 * @param array $input
-	 * @return void
 	 */
-	public function extend(&$query, array &$bindings, $input)
+	public function extend(array &$query, array &$bindings, array $input): void
 	{
 		if (empty($input['query']) === false) {
 			$query[]  = $input['query'];
@@ -375,9 +369,6 @@ abstract class Sql
 
 	/**
 	 * Creates the from syntax
-	 *
-	 * @param string $table
-	 * @return array
 	 */
 	public function from(string $table): array
 	{
@@ -389,51 +380,36 @@ abstract class Sql
 
 	/**
 	 * Creates the group by syntax
-	 *
-	 * @param string $group
-	 * @return array
 	 */
-	public function group(string $group = null): array
+	public function group(string|null $group = null): array
 	{
-		if (empty($group) === true) {
-			return [
-				'query'    => null,
-				'bindings' => []
-			];
+		if (empty($group) === false) {
+			$query = 'GROUP BY ' . $group;
 		}
 
 		return [
-			'query'    => 'GROUP BY ' . $group,
+			'query'    => $query ?? null,
 			'bindings' => []
 		];
 	}
 
 	/**
 	 * Creates the having syntax
-	 *
-	 * @param string|null $having
-	 * @return array
 	 */
-	public function having(string $having = null): array
+	public function having(string|null $having = null): array
 	{
-		if (empty($having) === true) {
-			return [
-				'query'    => null,
-				'bindings' => []
-			];
+		if (empty($having) === false) {
+			$query = 'HAVING ' . $having;
 		}
 
 		return [
-			'query'    => 'HAVING ' . $having,
+			'query'    => $query ?? null,
 			'bindings' => []
 		];
 	}
 
 	/**
 	 * Creates an insert query
-	 *
-	 * @param array $params
-	 * @return array
 	 */
 	public function insert(array $params = []): array
 	{
@@ -454,10 +430,6 @@ abstract class Sql
 	/**
 	 * Creates a join query
 	 *
-	 * @param string $table
-	 * @param string $type
-	 * @param string $on
-	 * @return array
 	 * @throws \Kirby\Exception\InvalidArgumentException if an invalid join type is given
 	 */
 	public function join(string $type, string $table, string $on): array
@@ -492,11 +464,8 @@ abstract class Sql
 
 	/**
 	 * Create the syntax for multiple joins
-	 *
-	 * @param array|null $joins
-	 * @return array
 	 */
-	public function joins(array $joins = null): array
+	public function joins(array|null $joins = null): array
 	{
 		$query    = [];
 		$bindings = [];
@@ -513,12 +482,8 @@ abstract class Sql
 
 	/**
 	 * Creates a limit and offset query instruction
-	 *
-	 * @param int $offset
-	 * @param int|null $limit
-	 * @return array
 	 */
-	public function limit(int $offset = 0, int $limit = null): array
+	public function limit(int $offset = 0, int|null $limit = null): array
 	{
 		// no need to add it to the query
 		if ($offset === 0 && $limit === null) {
@@ -544,42 +509,29 @@ abstract class Sql
 
 	/**
 	 * Creates the order by syntax
-	 *
-	 * @param string $order
-	 * @return array
 	 */
-	public function order(string $order = null): array
+	public function order(string|null $order = null): array
 	{
-		if (empty($order) === true) {
-			return [
-				'query'    => null,
-				'bindings' => []
-			];
+		if (empty($order) === false) {
+			$query = 'ORDER BY ' . $order;
 		}
 
 		return [
-			'query'    => 'ORDER BY ' . $order,
+			'query'    => $query ?? null,
 			'bindings' => []
 		];
 	}
 
 	/**
 	 * Converts a query array into a final string
-	 *
-	 * @param array $query
-	 * @param string $separator
-	 * @return string
 	 */
-	public function query(array $query, string $separator = ' ')
+	public function query(array $query, string $separator = ' '): string
 	{
 		return implode($separator, array_filter($query));
 	}
 
 	/**
 	 * Quotes an identifier (table *or* column)
-	 *
-	 * @param $identifier string
-	 * @return string
 	 */
 	public function quoteIdentifier(string $identifier): string
 	{
@@ -658,12 +610,8 @@ abstract class Sql
 
 	/**
 	 * Creates a columns definition from string or array
-	 *
-	 * @param string $table
-	 * @param array|string|null $columns
-	 * @return string
 	 */
-	public function selected($table, $columns = null): string
+	public function selected(string $table, array|string|null $columns = null): string
 	{
 		// all columns
 		if (empty($columns) === true) {
@@ -672,12 +620,11 @@ abstract class Sql
 
 		// array of columns
 		if (is_array($columns) === true) {
-
 			// validate columns
 			$result = [];
 
 			foreach ($columns as $column) {
-				list($table, $columnPart) = $this->splitIdentifier($table, $column);
+				[$table, $columnPart] = $this->splitIdentifier($table, $column);
 
 				if ($this->validateColumn($table, $columnPart) === true) {
 					$result[] = $this->combineIdentifier($table, $columnPart);
@@ -685,52 +632,46 @@ abstract class Sql
 			}
 
 			return implode(', ', $result);
-		} else {
-			return $columns;
 		}
+
+		return $columns;
 	}
 
 	/**
 	 * Splits a (qualified) identifier into table and column
 	 *
-	 * @param $table string Default table if the identifier is not qualified
-	 * @param $identifier string
-	 * @return array
+	 * @param string $table Default table if the identifier is not qualified
 	 * @throws \Kirby\Exception\InvalidArgumentException if an invalid identifier is given
 	 */
-	public function splitIdentifier($table, $identifier): array
+	public function splitIdentifier(string $table, string $identifier): array
 	{
 		// split by dot, but only outside of quotes
 		$parts = preg_split('/(?:`[^`]*`|"[^"]*")(*SKIP)(*F)|\./', $identifier);
 
-		switch (count($parts)) {
+		return match (count($parts)) {
 			// non-qualified identifier
-			case 1:
-				return [$table, $this->unquoteIdentifier($parts[0])];
+			1 => [$table, $this->unquoteIdentifier($parts[0])],
 
 			// qualified identifier
-			case 2:
-				return [$this->unquoteIdentifier($parts[0]), $this->unquoteIdentifier($parts[1])];
+			2 => [
+				$this->unquoteIdentifier($parts[0]),
+				$this->unquoteIdentifier($parts[1])
+			],
 
 			// every other number is an error
-			default:
-				throw new InvalidArgumentException('Invalid identifier ' . $identifier);
-		}
+			default => throw new InvalidArgumentException('Invalid identifier ' . $identifier)
+		};
 	}
 
 	/**
 	 * Returns a query to list the tables of the current database;
 	 * the query needs to return rows with a column `name`
-	 *
-	 * @return array
 	 */
 	abstract public function tables(): array;
 
 	/**
 	 * Validates and quotes a table name
 	 *
-	 * @param string $table
-	 * @return string
 	 * @throws \Kirby\Exception\InvalidArgumentException if an invalid table name is given
 	 */
 	public function tableName(string $table): string
@@ -745,9 +686,6 @@ abstract class Sql
 
 	/**
 	 * Unquotes an identifier (table *or* column)
-	 *
-	 * @param $identifier string
-	 * @return string
 	 */
 	public function unquoteIdentifier(string $identifier): string
 	{
@@ -768,7 +706,6 @@ abstract class Sql
 	 * Builds an update clause
 	 *
 	 * @param array $params List of parameters for the update clause. See defaults for more info.
-	 * @return array
 	 */
 	public function update(array $params = []): array
 	{
@@ -800,9 +737,6 @@ abstract class Sql
 	/**
 	 * Validates a given column name in a table
 	 *
-	 * @param string $table
-	 * @param string $column
-	 * @return bool
 	 * @throws \Kirby\Exception\InvalidArgumentException If the column is invalid
 	 */
 	public function validateColumn(string $table, string $column): bool
@@ -823,8 +757,13 @@ abstract class Sql
 	 * @param bool $set If true builds a set list of values for update clauses
 	 * @param bool $enforceQualified Always use fully qualified column names
 	 */
-	public function values(string $table, $values, string $separator = ', ', bool $set = true, bool $enforceQualified = false): array
-	{
+	public function values(
+		string $table,
+		$values,
+		string $separator = ', ',
+		bool $set = true,
+		bool $enforceQualified = false
+	): array {
 		if (is_array($values) === false) {
 			return [
 				'query' => $values,
@@ -834,22 +773,20 @@ abstract class Sql
 
 		if ($set === true) {
 			return $this->valueSet($table, $values, $separator, $enforceQualified);
-		} else {
-			return $this->valueList($table, $values, $separator, $enforceQualified);
 		}
+
+		return $this->valueList($table, $values, $separator, $enforceQualified);
 	}
 
 	/**
 	 * Creates a list of fields and values
-	 *
-	 * @param string $table
-	 * @param string|array $values
-	 * @param string $separator
-	 * @param bool $enforceQualified
-	 * @param array
 	 */
-	public function valueList(string $table, $values, string $separator = ',', bool $enforceQualified = false): array
-	{
+	public function valueList(
+		string $table,
+		string|array $values,
+		string $separator = ',',
+		bool $enforceQualified = false
+	): array {
 		$fields   = [];
 		$query    = [];
 		$bindings = [];
@@ -887,16 +824,13 @@ abstract class Sql
 
 	/**
 	 * Creates a set of values
-	 *
-	 * @param string $table
-	 * @param string|array $values
-	 * @param string $separator
-	 * @param bool $enforceQualified
-	 * @param array
-	 * @return array
 	 */
-	public function valueSet(string $table, $values, string $separator = ',', bool $enforceQualified = false): array
-	{
+	public function valueSet(
+		string $table,
+		string|array $values,
+		string $separator = ',',
+		bool $enforceQualified = false
+	): array {
 		$query    = [];
 		$bindings = [];
 
@@ -929,12 +863,7 @@ abstract class Sql
 		];
 	}
 
-	/**
-	 * @param string|array|null $where
-	 * @param array $bindings
-	 * @return array
-	 */
-	public function where($where, array $bindings = []): array
+	public function where(string|array|null $where, array $bindings = []): array
 	{
 		if (empty($where) === true) {
 			return [

@@ -2,6 +2,8 @@
 
 namespace Kirby\Image;
 
+use Kirby\Content\Content;
+use Kirby\Exception\LogicException;
 use Kirby\Filesystem\File;
 use Kirby\Toolkit\Html;
 
@@ -22,20 +24,10 @@ use Kirby\Toolkit\Html;
  */
 class Image extends File
 {
-	/**
-	 * @var \Kirby\Image\Exif|null
-	 */
-	protected $exif;
+	protected Exif|null $exif = null;
+	protected Dimensions|null $dimensions = null;
 
-	/**
-	 * @var \Kirby\Image\Dimensions|null
-	 */
-	protected $dimensions;
-
-	/**
-	 * @var array
-	 */
-	public static $resizableTypes = [
+	public static array $resizableTypes = [
 		'jpg',
 		'jpeg',
 		'gif',
@@ -43,10 +35,7 @@ class Image extends File
 		'webp'
 	];
 
-	/**
-	 * @var array
-	 */
-	public static $viewableTypes = [
+	public static array $viewableTypes = [
 		'avif',
 		'jpg',
 		'jpeg',
@@ -58,10 +47,8 @@ class Image extends File
 
 	/**
 	 * Validation rules to be used for `::match()`
-	 *
-	 * @var array
 	 */
-	public static $validations = [
+	public static array $validations = [
 		'maxsize'     => ['size',   'max'],
 		'minsize'     => ['size',   'min'],
 		'maxwidth'    => ['width',  'max'],
@@ -73,8 +60,6 @@ class Image extends File
 
 	/**
 	 * Returns the `<img>` tag for the image object
-	 *
-	 * @return string
 	 */
 	public function __toString(): string
 	{
@@ -83,20 +68,19 @@ class Image extends File
 
 	/**
 	 * Returns the dimensions of the file if possible
-	 *
-	 * @return \Kirby\Image\Dimensions
 	 */
-	public function dimensions()
+	public function dimensions(): Dimensions
 	{
 		if ($this->dimensions !== null) {
 			return $this->dimensions;
 		}
 
 		if (in_array($this->mime(), [
+			'image/avif',
+			'image/gif',
 			'image/jpeg',
 			'image/jp2',
 			'image/png',
-			'image/gif',
 			'image/webp'
 		])) {
 			return $this->dimensions = Dimensions::forImage($this->root);
@@ -111,18 +95,14 @@ class Image extends File
 
 	/**
 	 * Returns the exif object for this file (if image)
-	 *
-	 * @return \Kirby\Image\Exif
 	 */
-	public function exif()
+	public function exif(): Exif
 	{
 		return $this->exif ??= new Exif($this);
 	}
 
 	/**
 	 * Returns the height of the asset
-	 *
-	 * @return int
 	 */
 	public function height(): int
 	{
@@ -131,19 +111,29 @@ class Image extends File
 
 	/**
 	 * Converts the file to html
-	 *
-	 * @param array $attr
-	 * @return string
 	 */
 	public function html(array $attr = []): string
 	{
-		return Html::img($this->url(), $attr);
+		// if no alt text explicitly provided,
+		// try to infer from model content file
+		if (
+			$this->model !== null &&
+			method_exists($this->model, 'content') === true &&
+			$this->model->content() instanceof Content &&
+			$this->model->content()->get('alt')->isNotEmpty() === true
+		) {
+			$attr['alt'] ??= $this->model->content()->get('alt')->value();
+		}
+
+		if ($url = $this->url()) {
+			return Html::img($url, $attr);
+		}
+
+		throw new LogicException('Calling Image::html() requires that the URL property is not null');
 	}
 
 	/**
 	 * Returns the PHP imagesize array
-	 *
-	 * @return array
 	 */
 	public function imagesize(): array
 	{
@@ -152,8 +142,6 @@ class Image extends File
 
 	/**
 	 * Checks if the dimensions of the asset are portrait
-	 *
-	 * @return bool
 	 */
 	public function isPortrait(): bool
 	{
@@ -162,8 +150,6 @@ class Image extends File
 
 	/**
 	 * Checks if the dimensions of the asset are landscape
-	 *
-	 * @return bool
 	 */
 	public function isLandscape(): bool
 	{
@@ -172,8 +158,6 @@ class Image extends File
 
 	/**
 	 * Checks if the dimensions of the asset are square
-	 *
-	 * @return bool
 	 */
 	public function isSquare(): bool
 	{
@@ -182,8 +166,6 @@ class Image extends File
 
 	/**
 	 * Checks if the file is a resizable image
-	 *
-	 * @return bool
 	 */
 	public function isResizable(): bool
 	{
@@ -193,8 +175,6 @@ class Image extends File
 	/**
 	 * Checks if a preview can be displayed for the file
 	 * in the Panel or in the frontend
-	 *
-	 * @return bool
 	 */
 	public function isViewable(): bool
 	{
@@ -203,8 +183,6 @@ class Image extends File
 
 	/**
 	 * Returns the ratio of the asset
-	 *
-	 * @return float
 	 */
 	public function ratio(): float
 	{
@@ -213,19 +191,15 @@ class Image extends File
 
 	/**
 	 * Returns the orientation as string
-	 * landscape | portrait | square
-	 *
-	 * @return string
+	 * `landscape` | `portrait` | `square`
 	 */
-	public function orientation(): string
+	public function orientation(): string|false
 	{
 		return $this->dimensions()->orientation();
 	}
 
 	/**
 	 * Converts the object to an array
-	 *
-	 * @return array
 	 */
 	public function toArray(): array
 	{
@@ -241,8 +215,6 @@ class Image extends File
 
 	/**
 	 * Returns the width of the asset
-	 *
-	 * @return int
 	 */
 	public function width(): int
 	{

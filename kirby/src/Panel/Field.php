@@ -4,8 +4,12 @@ namespace Kirby\Panel;
 
 use Kirby\Cms\App;
 use Kirby\Cms\File;
+use Kirby\Cms\ModelWithContent;
 use Kirby\Cms\Page;
+use Kirby\Form\Form;
+use Kirby\Http\Router;
 use Kirby\Toolkit\I18n;
+use Kirby\Toolkit\Str;
 
 /**
  * Provides common field prop definitions
@@ -21,10 +25,59 @@ use Kirby\Toolkit\I18n;
 class Field
 {
 	/**
+	 * Creates the routes for a field dialog
+	 * This is most definitely not a good place for this
+	 * method, but as long as the other classes are
+	 * not fully refactored, it still feels appropriate
+	 */
+	public static function dialog(
+		ModelWithContent $model,
+		string $fieldName,
+		string|null $path = null,
+		string $method = 'GET',
+	) {
+		$field  = Form::for($model)->field($fieldName);
+		$routes = [];
+
+		foreach ($field->dialogs() as $dialogId => $dialog) {
+			$routes = array_merge($routes, Dialog::routes(
+				id: $dialogId,
+				areaId: 'site',
+				options: $dialog
+			));
+		}
+
+		return Router::execute($path, $method, $routes);
+	}
+
+	/**
+	 * Creates the routes for a field drawer
+	 * This is most definitely not a good place for this
+	 * method, but as long as the other classes are
+	 * not fully refactored, it still feels appropriate
+	 */
+	public static function drawer(
+		ModelWithContent $model,
+		string $fieldName,
+		string|null $path = null,
+		string $method = 'GET',
+	) {
+		$field  = Form::for($model)->field($fieldName);
+		$routes = [];
+
+		foreach ($field->drawers() as $drawerId => $drawer) {
+			$routes = array_merge($routes, Drawer::routes(
+				id: $drawerId,
+				areaId: 'site',
+				options: $drawer
+			));
+		}
+
+		return Router::execute($path, $method, $routes);
+	}
+
+	/**
 	 * A standard email field
-	 *
-	 * @param array $props
-	 * @return array
 	 */
 	public static function email(array $props = []): array
 	{
@@ -37,10 +90,6 @@ class Field
 
 	/**
 	 * File position
-	 *
-	 * @param \Kirby\Cms\File
-	 * @param array $props
-	 * @return array
 	 */
 	public static function filePosition(File $file, array $props = []): array
 	{
@@ -78,20 +127,13 @@ class Field
 	}
 
 
-	/**
-	 * @return array
-	 */
 	public static function hidden(): array
 	{
-		return ['type' => 'hidden'];
+		return ['hidden' => true];
 	}
 
 	/**
 	 * Page position
-	 *
-	 * @param \Kirby\Cms\Page
-	 * @param array $props
-	 * @return array
 	 */
 	public static function pagePosition(Page $page, array $props = []): array
 	{
@@ -137,9 +179,6 @@ class Field
 
 	/**
 	 * A regular password field
-	 *
-	 * @param array $props
-	 * @return array
 	 */
 	public static function password(array $props = []): array
 	{
@@ -151,15 +190,11 @@ class Field
 
 	/**
 	 * User role radio buttons
-	 *
-	 * @param array $props
-	 * @return array
 	 */
 	public static function role(array $props = []): array
 	{
 		$kirby   = App::instance();
-		$user    = $kirby->user();
-		$isAdmin = $user && $user->isAdmin();
+		$isAdmin = $kirby->user()?->isAdmin() ?? false;
 		$roles   = [];
 
 		foreach ($kirby->roles() as $role) {
@@ -183,25 +218,19 @@ class Field
 		], $props);
 	}
 
-	/**
-	 * @param array $props
-	 * @return array
-	 */
 	public static function slug(array $props = []): array
 	{
 		return array_merge([
 			'label' => I18n::translate('slug'),
 			'type'  => 'slug',
+			'allow' => Str::$defaults['slug']['allowed']
 		], $props);
 	}
 
-	/**
-	 * @param array $blueprints
-	 * @param array $props
-	 * @return array
-	 */
-	public static function template(?array $blueprints = [], ?array $props = []): array
-	{
+	public static function template(
+		array|null $blueprints = [],
+		array|null $props = []
+	): array {
 		$options = [];
 
 		foreach ($blueprints as $blueprint) {
@@ -221,10 +250,6 @@ class Field
 		], $props);
 	}
 
-	/**
-	 * @param array $props
-	 * @return array
-	 */
 	public static function title(array $props = []): array
 	{
 		return array_merge([
@@ -236,9 +261,6 @@ class Field
 
 	/**
 	 * Panel translation select box
-	 *
-	 * @param array $props
-	 * @return array
 	 */
 	public static function translation(array $props = []): array
 	{
@@ -253,16 +275,12 @@ class Field
 		return array_merge([
 			'label'    => I18n::translate('language'),
 			'type'     => 'select',
-			'icon'     => 'globe',
+			'icon'     => 'translate',
 			'options'  => $translations,
 			'empty'    => false
 		], $props);
 	}
 
-	/**
-	 * @param array $props
-	 * @return array
-	 */
 	public static function username(array $props = []): array
 	{
 		return array_merge([

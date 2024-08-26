@@ -16,12 +16,13 @@
       <p><?= $site->find('about')->textright() ?></p>
           <div class="contact flex mt-auto">
             <section>
-            <div class="mb-1">
-              <a class="block"  href="mailto:<?= Str::encode($site->mail()) ?>">
-                <?= Str::encode($site->mail()) ?>
-              </a>
-              <a href="tel:<?= $site->phone() ?>"><?= $site->phone() ?></a>
-            </div>
+
+              <div class="mb-1">
+                <a class="block"  href="mailto:<?= Str::encode($site->mail()) ?>">
+                  <?= Str::encode($site->mail()) ?>
+                </a>
+                <a href="tel:<?= $site->phone() ?>"><?= $site->phone() ?></a>
+              </div>
 
               <ul class="justify-center mb-2">
                 <li><a href="<?= $site->instagram() ?>" target="_blank">INSTAGRAM</a></li>
@@ -29,10 +30,16 @@
                 <li><a href="<?= $site->linktree() ?>" target="_blank">LINKTREE</a></li>
               </ul>
 
+              <div class="mb-2">
+                <?php if($portfolio = $site->portfoliopdf()->toFile()): ?>
+                  <a href="<?= $portfolio->url() ?>" target="_blank"><?= $site->portfoliobtn()->text() ?></a>
+                <?php endif ?>
+              </div>
+
               <ul class="credits">
                 <li><a href="#">SOUND : GUILLAUME BONNEAU</a></li>
                 <li><a href="http://siloenouyrit.fr/" target="_blank">Design : Siloé Nouyrit</a></li>
-                <li><a href="https://shimsham.design/" target="_blank">Code : Théo Paolo G.</a></li>
+                <li><a href="https://shimsham.design/" target="_blank">Website : Théo Paolo G.</a></li>
               </ul>
             </section>
       </div>

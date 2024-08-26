@@ -2,7 +2,10 @@
 
 namespace Kirby\Parsley;
 
+use DOMDocument;
+use DOMElement;
 use DOMNode;
+use DOMText;
 use Kirby\Parsley\Schema\Plain;
 use Kirby\Toolkit\Dom;
 
@@ -20,65 +23,25 @@ use Kirby\Toolkit\Dom;
  */
 class Parsley
 {
-	/**
-	 * @var array
-	 */
-	protected $blocks = [];
+	protected array $blocks = [];
+	protected DOMDocument $doc;
+	protected Dom $dom;
+	protected array $inline = [];
+	protected array $marks = [];
+	protected array $nodes = [];
+	protected Schema $schema;
+	protected array $skip = [];
 
-	/**
-	 * @var \DOMDocument
-	 */
-	protected $doc;
+	public static bool $useXmlExtension = true;
 
-	/**
-	 * @var \Kirby\Toolkit\Dom
-	 */
-	protected $dom;
-
-	/**
-	 * @var array
-	 */
-	protected $inline = [];
-
-	/**
-	 * @var array
-	 */
-	protected $marks = [];
-
-	/**
-	 * @var array
-	 */
-	protected $nodes = [];
-
-	/**
-	 * @var \Kirby\Parsley\Schema
-	 */
-	protected $schema;
-
-	/**
-	 * @var array
-	 */
-	protected $skip = [];
-
-	/**
-	 * @var bool
-	 */
-	public static $useXmlExtension = true;
-
-	/**
-	 * @param string $html
-	 * @param \Kirby\Parsley\Schema|null $schema
-	 */
-	public function __construct(string $html, Schema $schema = null)
+	public function __construct(string $html, Schema|null $schema = null)
 	{
 		// fail gracefully if the XML extension is not installed
 		// or should be skipped
 		if ($this->useXmlExtension() === false) {
 			$this->blocks[] = [
-				'type' => 'markdown',
-				'content' => [
-					'text' => $html,
-				]
+				'type'    => 'markdown',
+				'content' => ['text' => $html]
 			];
 			return;
 		}
@@ -110,8 +73,6 @@ class Parsley
 
 	/**
 	 * Returns all detected blocks
-	 *
-	 * @return array
 	 */
 	public function blocks(): array
 	{
@@ -120,9 +81,6 @@ class Parsley
 
 	/**
 	 * Load all node rules from the schema
-	 *
-	 * @param array $nodes
-	 * @return array
 	 */
 	public function createNodeRules(array $nodes): array
 	{
@@ -136,9 +94,6 @@ class Parsley
 	/**
 	 * Checks if the given element contains
 	 * any other block level elements
-	 *
-	 * @param \DOMNode $element
-	 * @return bool
 	 */
 	public function containsBlock(DOMNode $element): bool
 	{
@@ -147,7 +102,10 @@ class Parsley
 		}
 
 		foreach ($element->childNodes as $childNode) {
-			if ($this->isBlock($childNode) === true || $this->containsBlock($childNode)) {
+			if (
+				$this->isBlock($childNode) === true ||
+				$this->containsBlock($childNode)
+			) {
 				return true;
 			}
 		}
@@ -162,10 +120,8 @@ class Parsley
 	 * if the type matches, or will be appended.
 	 *
 	 * The inline cache will be reset afterwards
-	 *
-	 * @return void
 	 */
-	public function endInlineBlock()
+	public function endInlineBlock(): void
 	{
 		if (empty($this->inline) === true) {
 			return;
@@ -174,7 +130,7 @@ class Parsley
 		$html = [];
 
 		foreach ($this->inline as $inline) {
-			$node = new Inline($inline, $this->marks);
+			$node   = new Inline($inline, $this->marks);
 			$html[] = $node->innerHTML();
 		}
 
@@ -191,11 +147,8 @@ class Parsley
 	 * Creates a fallback block type for the given
 	 * element. The element can either be a element object
 	 * or a simple HTML/plain text string
-	 *
-	 * @param \Kirby\Parsley\Element|string $element
-	 * @return array|null
 	 */
-	public function fallback($element): ?array
+	public function fallback(Element|string $element): array|null
 	{
 		if ($fallback = $this->schema->fallback($element)) {
 			return $fallback;
@@ -206,32 +159,26 @@ class Parsley
 
 	/**
 	 * Checks if the given DOMNode is a block element
-	 *
-	 * @param DOMNode $element
-	 * @return bool
 	 */
 	public function isBlock(DOMNode $element): bool
 	{
-		if (is_a($element, 'DOMElement') === false) {
-			return false;
+		if ($element instanceof DOMElement) {
+			return array_key_exists($element->tagName, $this->nodes) === true;
 		}
 
-		return array_key_exists($element->tagName, $this->nodes) === true;
+		return false;
 	}
 
 	/**
 	 * Checks if the given DOMNode is an inline element
-	 *
-	 * @param \DOMNode $element
-	 * @return bool
 	 */
 	public function isInline(DOMNode $element): bool
 	{
-		if (is_a($element, 'DOMText') === true) {
+		if ($element instanceof DOMText) {
 			return true;
 		}
 
-		if (is_a($element, 'DOMElement') === true) {
+		if ($element instanceof DOMElement) {
 			// all spans will be treated as inline elements
 			if ($element->tagName === 'span') {
 				return true;
@@ -252,17 +199,17 @@ class Parsley
 		return false;
 	}
 
-	/**
-	 * @param array $block
-	 * @return void
-	 */
-	public function mergeOrAppend(array $block)
+	public function mergeOrAppend(array $block): void
 	{
 		$lastIndex = count($this->blocks) - 1;
 		$lastItem  = $this->blocks[$lastIndex] ?? null;
 
 		// merge with previous block
-		if ($block['type'] === 'text' && $lastItem && $lastItem['type'] === 'text') {
+		if (
+			$block['type'] === 'text' &&
+			$lastItem &&
+			$lastItem['type'] === 'text'
+		) {
 			$this->blocks[$lastIndex]['content']['text'] .= ' ' . $block['content']['text'];
 
 		// append
@@ -274,9 +221,6 @@ class Parsley
 	/**
 	 * Parses the given DOM node and tries to
 	 * convert it to a block or a list of blocks
-	 *
-	 * @param \DOMNode $element
-	 * @return void
 	 */
 	public function parseNode(DOMNode $element): bool
 	{
@@ -288,15 +232,18 @@ class Parsley
 		}
 
 		// inline context
-		if ($this->isInline($element)) {
+		if ($this->isInline($element) === true) {
 			$this->inline[] = $element;
 			return true;
-		} else {
-			$this->endInlineBlock();
 		}
+
+		$this->endInlineBlock();
 
 		// known block nodes
 		if ($this->isBlock($element) === true) {
+			/**
+			 * @var DOMElement $element
+			 */
 			if ($parser = ($this->nodes[$element->tagName]['parse'] ?? null)) {
 				if ($result = $parser(new Element($element, $this->marks))) {
 					$this->blocks[] = $result;
@@ -307,6 +254,9 @@ class Parsley
 
 		// has only unknown children (div, etc.)
 		if ($this->containsBlock($element) === false) {
+			/**
+			 * @var DOMElement $element
+			 */
 			if (in_array($element->tagName, $this->skip) === true) {
 				return false;
 			}
@@ -339,9 +289,6 @@ class Parsley
 		return true;
 	}
 
-	/**
-	 * @return bool
-	 */
 	public function useXmlExtension(): bool
 	{
 		if (static::$useXmlExtension !== true) {

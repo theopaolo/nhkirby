@@ -4,6 +4,7 @@ namespace Kirby\Cms;
 
 use Kirby\Exception\InvalidArgumentException;
 use Kirby\Filesystem\F;
+use Kirby\Uuid\HasUuids;
 
 /**
  * The `$files` object extends the general
@@ -21,12 +22,12 @@ use Kirby\Filesystem\F;
  */
 class Files extends Collection
 {
+	use HasUuids;
+
 	/**
 	 * All registered files methods
-	 *
-	 * @var array
 	 */
-	public static $methods = [];
+	public static array $methods = [];
 
 	/**
 	 * Adds a single file or
@@ -37,18 +38,21 @@ class Files extends Collection
 	 * @return $this
 	 * @throws \Kirby\Exception\InvalidArgumentException When no `File` or `Files` object or an ID of an existing file is passed
 	 */
-	public function add($object)
+	public function add($object): static
 	{
 		// add a files collection
-		if (is_a($object, self::class) === true) {
+		if ($object instanceof self) {
 			$this->data = array_merge($this->data, $object->data);
 
 		// add a file by id
-		} elseif (is_string($object) === true && $file = App::instance()->file($object)) {
+		} elseif (
+			is_string($object) === true &&
+			$file = App::instance()->file($object)
+		) {
 			$this->__set($file->id(), $file);
 
 		// add a file object
-		} elseif (is_a($object, 'Kirby\Cms\File') === true) {
+		} elseif ($object instanceof File) {
 			$this->__set($object->id(), $object);
 
 		// give a useful error message on invalid input;
@@ -68,7 +72,7 @@ class Files extends Collection
 	 * @param int $offset Sorting offset
 	 * @return $this
 	 */
-	public function changeSort(array $files, int $offset = 0)
+	public function changeSort(array $files, int $offset = 0): static
 	{
 		foreach ($files as $filename) {
 			if ($file = $this->get($filename)) {
@@ -82,19 +86,13 @@ class Files extends Collection
 
 	/**
 	 * Creates a files collection from an array of props
-	 *
-	 * @param array $files
-	 * @param \Kirby\Cms\Model $parent
-	 * @return static
 	 */
-	public static function factory(array $files, Model $parent)
+	public static function factory(array $files, Page|Site|User $parent): static
 	{
 		$collection = new static([], $parent);
-		$kirby      = $parent->kirby();
 
 		foreach ($files as $props) {
 			$props['collection'] = $collection;
-			$props['kirby']      = $kirby;
 			$props['parent']     = $parent;
 
 			$file = File::factory($props);
@@ -106,31 +104,16 @@ class Files extends Collection
 	}
 
 	/**
-	 * Tries to find a file by id/filename
-	 * @deprecated 3.7.0 Use `$files->find()` instead
-	 * @todo 3.8.0 Remove method
-	 * @codeCoverageIgnore
-	 *
-	 * @param string $id
-	 * @return \Kirby\Cms\File|null
-	 */
-	public function findById(string $id)
-	{
-		Helpers::deprecated('Cms\Files::findById() has been deprecated and will be removed in Kirby 3.8.0. Use $files->find() instead.');
-
-		return $this->findByKey($id);
-	}
-
-	/**
 	 * Finds a file by its filename
 	 * @internal Use `$files->find()` instead
-	 *
-	 * @param string $key
-	 * @return \Kirby\Cms\File|null
 	 */
-	public function findByKey(string $key)
+	public function findByKey(string $key): File|null
 	{
-		return $this->get(ltrim($this->parent->id() . '/' . $key, '/'));
+		if ($file = $this->findByUuid($key, 'file')) {
+			return $file;
+		}
+
+		return $this->get(ltrim($this->parent?->id() . '/' . $key, '/'));
 	}
 
 	/**
@@ -142,7 +125,6 @@ class Files extends Collection
 	 * @param string|null|false $locale Locale for number formatting,
 	 *                                  `null` for the current locale,
 	 *                                  `false` to disable number formatting
-	 * @return string
 	 */
 	public function niceSize($locale = null): string
 	{
@@ -153,8 +135,6 @@ class Files extends Collection
 	 * Returns the raw size for all
 	 * files in the collection
 	 * @since 3.6.0
-	 *
-	 * @return int
 	 */
 	public function size(): int
 	{
@@ -164,10 +144,8 @@ class Files extends Collection
 	/**
 	 * Returns the collection sorted by
 	 * the sort number and the filename
-	 *
-	 * @return static
 	 */
-	public function sorted()
+	public function sorted(): static
 	{
 		return $this->sort('sort', 'asc', 'filename', 'asc');
 	}
@@ -175,10 +153,9 @@ class Files extends Collection
 	/**
 	 * Filter all files by the given template
 	 *
-	 * @param null|string|array $template
 	 * @return $this|static
 	 */
-	public function template($template)
+	public function template(string|array|null $template): static
 	{
 		if (empty($template) === true) {
 			return $this;

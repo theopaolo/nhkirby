@@ -18,31 +18,26 @@ trait HasSiblings
 	 * Returns the position / index in the collection
 	 *
 	 * @param \Kirby\Cms\Collection|null $collection
-	 *
-	 * @return int
 	 */
-	public function indexOf($collection = null): int
+	public function indexOf($collection = null): int|false
 	{
-		if ($collection === null) {
-			$collection = $this->siblingsCollection();
-		}
-
+		$collection ??= $this->siblingsCollection();
 		return $collection->indexOf($this);
 	}
 
 	/**
 	 * Returns the next item in the collection if available
+	 * @todo `static` return type hint is not 100% accurate because of
+	 *       quirks in the `Form` classes; would break if enforced
+	 *       (https://github.com/getkirby/kirby/pull/5175)
 	 *
 	 * @param \Kirby\Cms\Collection|null $collection
 	 *
-	 * @return \Kirby\Cms\Model|null
+	 * @return static|null
 	 */
 	public function next($collection = null)
 	{
-		if ($collection === null) {
-			$collection = $this->siblingsCollection();
-		}
-
+		$collection ??= $this->siblingsCollection();
 		return $collection->nth($this->indexOf($collection) + 1);
 	}
 
@@ -55,26 +50,23 @@ trait HasSiblings
 	 */
 	public function nextAll($collection = null)
 	{
-		if ($collection === null) {
-			$collection = $this->siblingsCollection();
-		}
-
+		$collection ??= $this->siblingsCollection();
 		return $collection->slice($this->indexOf($collection) + 1);
 	}
 
 	/**
 	 * Returns the previous item in the collection if available
+	 * @todo `static` return type hint is not 100% accurate because of
+	 *       quirks in the `Form` classes; would break if enforced
+	 *       (https://github.com/getkirby/kirby/pull/5175)
 	 *
 	 * @param \Kirby\Cms\Collection|null $collection
 	 *
-	 * @return \Kirby\Cms\Model|null
+	 * @return static|null
 	 */
 	public function prev($collection = null)
 	{
-		if ($collection === null) {
-			$collection = $this->siblingsCollection();
-		}
-
+		$collection ??= $this->siblingsCollection();
 		return $collection->nth($this->indexOf($collection) - 1);
 	}
 
@@ -87,17 +79,13 @@ trait HasSiblings
 	 */
 	public function prevAll($collection = null)
 	{
-		if ($collection === null) {
-			$collection = $this->siblingsCollection();
-		}
-
+		$collection ??= $this->siblingsCollection();
 		return $collection->slice(0, $this->indexOf($collection));
 	}
 
 	/**
 	 * Returns all sibling elements
 	 *
-	 * @param bool $self
 	 * @return \Kirby\Cms\Collection
 	 */
 	public function siblings(bool $self = true)
@@ -115,8 +103,6 @@ trait HasSiblings
 	 * Checks if there's a next item in the collection
 	 *
 	 * @param \Kirby\Cms\Collection|null $collection
-	 *
-	 * @return bool
 	 */
 	public function hasNext($collection = null): bool
 	{
@@ -127,8 +113,6 @@ trait HasSiblings
 	 * Checks if there's a previous item in the collection
 	 *
 	 * @param \Kirby\Cms\Collection|null $collection
-	 *
-	 * @return bool
 	 */
 	public function hasPrev($collection = null): bool
 	{
@@ -139,15 +123,10 @@ trait HasSiblings
 	 * Checks if the item is the first in the collection
 	 *
 	 * @param \Kirby\Cms\Collection|null $collection
-	 *
-	 * @return bool
 	 */
 	public function isFirst($collection = null): bool
 	{
-		if ($collection === null) {
-			$collection = $this->siblingsCollection();
-		}
-
+		$collection ??= $this->siblingsCollection();
 		return $collection->first()->is($this);
 	}
 
@@ -155,15 +134,10 @@ trait HasSiblings
 	 * Checks if the item is the last in the collection
 	 *
 	 * @param \Kirby\Cms\Collection|null $collection
-	 *
-	 * @return bool
 	 */
 	public function isLast($collection = null): bool
 	{
-		if ($collection === null) {
-			$collection = $this->siblingsCollection();
-		}
-
+		$collection ??= $this->siblingsCollection();
 		return $collection->last()->is($this);
 	}
 
@@ -171,9 +145,6 @@ trait HasSiblings
 	 * Checks if the item is at a certain position
 	 *
 	 * @param \Kirby\Cms\Collection|null $collection
-	 * @param int $n
-	 *
-	 * @return bool
 	 */
 	public function isNth(int $n, $collection = null): bool
 	{

@@ -1,6 +1,6 @@
 <?php snippet('header') ?>
 <?php $isdark = $page->bgdark()->toBool(); $fullheigt = $page->marges()->toBool();?>
-<div class="overlay"><span>chargement...</span></div>
+<div class="overlay"><span><?= $site->loading()->text() ?></span></div>
 <main>
     <section id="series">
 
@@ -28,7 +28,13 @@
         </div>
 
         <?php foreach ($page->gallery()->toLayouts() as $layout): ?>
-          <section class="slides bg-light <?= $layout->attrs()->presentation() ?> serie-grid">
+          <?php
+            $seriegridclass = '';
+            if ($layout->columns()->count() > 1) {
+                $seriegridclass = 'serie-grid';
+            }
+          ?>
+          <section class="slides bg-light <?= $layout->attrs()->presentation() ?> <?= $seriegridclass ?>">
             <?php foreach($layout->columns() as $column):?>
               <?php foreach ($column->blocks() as $block): ?>
                 <div class="column <?= $block->position() ?> <?php if($block->gridcol()->toBool() === true){ echo "grid-col-2"; }?> <?php if($fullheigt === true){ echo "full-height"; }?>"">
@@ -41,8 +47,8 @@
 
         <?php if($page->video()->isNotEmpty()):?>
           <section class="slides center">
-            <div class="column serie-center video-outer">
-              <div class="video-inner">
+            <div class="serie-center video-outer">
+              <div class="video-inner video-player">
                 <iframe src="<?= $page->video()->url() ?>" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>
               </div>
             </div>

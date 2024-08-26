@@ -3,6 +3,8 @@
 namespace Kirby\Cms;
 
 use Kirby\Data\Data;
+use Kirby\Exception\InvalidArgumentException;
+use Kirby\Exception\NotFoundException;
 use Kirby\Filesystem\Dir;
 use Kirby\Filesystem\F;
 use Kirby\Toolkit\Str;
@@ -23,14 +25,12 @@ class Media
 	/**
 	 * Tries to find a file by model and filename
 	 * and to copy it to the media folder.
-	 *
-	 * @param \Kirby\Cms\Model|null $model
-	 * @param string $hash
-	 * @param string $filename
-	 * @return \Kirby\Cms\Response|false
 	 */
-	public static function link(Model $model = null, string $hash, string $filename)
-	{
+	public static function link(
+		Page|Site|User $model = null,
+		string $hash,
+		string $filename
+	): Response|false {
 		if ($model === null) {
 			return false;
 		}
@@ -41,16 +41,15 @@ class Media
 		// try to find a file by model and filename
 		// this should work for all original files
 		if ($file = $model->file($filename)) {
-
 			// check if the request contained an outdated media hash
 			if ($file->mediaHash() !== $hash) {
 				// if at least the token was correct, redirect
 				if (Str::startsWith($hash, $file->mediaToken() . '-') === true) {
 					return Response::redirect($file->mediaUrl(), 307);
-				} else {
-					// don't leak the correct token, render the error page
-					return false;
 				}
+
+				// don't leak the correct token, render the error page
+				return false;
 			}
 
 			// send the file to the browser
@@ -58,15 +57,16 @@ class Media
 		}
 
 		// try to generate a thumb for the file
-		return static::thumb($model, $hash, $filename);
+		try {
+			return static::thumb($model, $hash, $filename);
+		} catch (NotFoundException) {
+			// render the error page if there is no job for this filename
+			return false;
+		}
 	}
 
 	/**
 	 * Copy the file to the final media folder location
-	 *
-	 * @param \Kirby\Cms\File $file
-	 * @param string $dest
-	 * @return bool
 	 */
 	public static function publish(File $file, string $dest): bool
 	{
@@ -88,66 +88,74 @@ class Media
 	 * Tries to find a job file for the
 	 * given filename and then calls the thumb
 	 * component to create a thumbnail accordingly
-	 *
-	 * @param \Kirby\Cms\Model|string $model
-	 * @param string $hash
-	 * @param string $filename
-	 * @return \Kirby\Cms\Response|false
 	 */
-	public static function thumb($model, string $hash, string $filename)
-	{
+	public static function thumb(
+		File|Page|Site|User|string $model,
+		string $hash,
+		string $filename
+	): Response|false {
 		$kirby = App::instance();
 
-		// assets
-		if (is_string($model) === true) {
-			$root = $kirby->root('media') . '/assets/' . $model . '/' . $hash;
-		// parent files for file model that already included hash
-		} elseif (is_a($model, '\Kirby\Cms\File')) {
-			$root = dirname($model->mediaRoot());
-		// model files
-		} else {
-			$root = $model->mediaRoot() . '/' . $hash;
+		$root = match (true) {
+			// assets
+			is_string($model)
+				=> $kirby->root('media') . '/assets/' . $model . '/' . $hash,
+			// parent files for file model that already included hash
+			$model instanceof File
+				=> dirname($model->mediaRoot()),
+			// model files
+			default
+			=> $model->mediaRoot() . '/' . $hash
+		};
+
+		$thumb = $root . '/' . $filename;
+		$job   = $root . '/.jobs/' . $filename . '.json';
+
+		try {
+			$options = Data::read($job);
+		} catch (Throwable) {
+			// send a customized error message to make clearer what happened here
+			throw new NotFoundException('The thumbnail configuration could not be found');
+		}
+
+		if (empty($options['filename']) === true) {
+			throw new InvalidArgumentException('Incomplete thumbnail configuration');
 		}
 
 		try {
-			$thumb   = $root . '/' . $filename;
-			$job     = $root . '/.jobs/' . $filename . '.json';
-			$options = Data::read($job);
+			// find the correct source file depending on the model
+			// this adds support for custom assets
+			$source = match (true) {
+				is_string($model) === true
+					=> $kirby->root('index') . '/' . $model . '/' . $options['filename'],
+				default
+				=> $model->file($options['filename'])->root()
+			};
 
-			if (empty($options) === true) {
-				return false;
-			}
+			// generate the thumbnail and save it in the media folder
+			$kirby->thumb($source, $thumb, $options);
 
-			if (is_string($model) === true) {
-				$source = $kirby->root('index') . '/' . $model . '/' . $options['filename'];
-			} else {
-				$source = $model->file($options['filename'])->root();
-			}
+			// remove the job file once the thumbnail has been created
+			F::remove($job);
 
-			try {
-				$kirby->thumb($source, $thumb, $options);
-				F::remove($job);
-				return Response::file($thumb);
-			} catch (Throwable $e) {
-				F::remove($thumb);
-				return Response::file($source);
-			}
+			// read the file and send it to the browser
+			return Response::file($thumb);
 		} catch (Throwable $e) {
-			return false;
+			// remove potentially broken thumbnails
+			F::remove($thumb);
+			throw $e;
 		}
 	}
 
 	/**
 	 * Deletes all versions of the given file
 	 * within the parent directory
-	 *
-	 * @param string $directory
-	 * @param \Kirby\Cms\File $file
-	 * @param string|null $ignore
-	 * @return bool
 	 */
-	public static function unpublish(string $directory, File $file, string $ignore = null): bool
-	{
+	public static function unpublish(
+		string $directory,
+		File $file,
+		string|null $ignore = null
+	): bool {
 		if (is_dir($directory) === false) {
 			return true;
 		}

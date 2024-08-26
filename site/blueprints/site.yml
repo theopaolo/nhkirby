@@ -41,3 +41,25 @@ tabs:
             type: files
             mutliple: false
             query: page.audio
+          portfoliopdf:
+            label: Portfolio PDF
+            type: files
+            mutliple: false
+            query: page.documents
+
+  translations:
+    icon: translate
+
+    fields:
+      portfoliobtn:
+        label: Portfolio
+        type: text
+      audiobtn:
+        label: Audio
+        type: text
+      fullscreenbtn:
+        label: Fullscreen
+        type: text
+      loading:
+        label: Chargement
+        type: text

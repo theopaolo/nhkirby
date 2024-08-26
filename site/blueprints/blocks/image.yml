@@ -15,16 +15,27 @@ fields:
     label: field.blocks.image.alt
     type: text
     icon: title
+
+
+  bgcolor:
+    label: Fond sombre
+    type: toggle
+    text:
+      - "non"
+      - "oui"
+
+  gridcol:
+    label: Grille 2 colones ?
+    help: permet de placer une image à gauche ou à droite
+    type: toggle
+    text:
+      - "non"
+      - "oui"
+
   position:
     label: Position
     type: select
     options:
-      serie-center: Serie center
-      self-end: Self end
-      self-start: Self start
-  gridcol:
-    label: With Grid col 2 ?
-    type: toggle
-    text:
-      - "no"
-      - "yes"
+      serie-center: Au center
+      self-end: A droite
+      self-start: A gauche

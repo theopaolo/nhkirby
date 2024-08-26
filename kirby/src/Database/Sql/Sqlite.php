@@ -20,7 +20,6 @@ class Sqlite extends Sql
 	 * the query needs to return rows with a column `name`
 	 *
 	 * @param string $table Table name
-	 * @return array
 	 */
 	public function columns(string $table): array
 	{
@@ -34,8 +33,6 @@ class Sqlite extends Sql
 	 * Abstracted column types to simplify table
 	 * creation for multiple database drivers
 	 * @codeCoverageIgnore
-	 *
-	 * @return array
 	 */
 	public function columnTypes(): array
 	{
@@ -45,18 +42,18 @@ class Sqlite extends Sql
 			'text'      => '{{ name }} TEXT {{ null }} {{ default }} {{ unique }}',
 			'int'       => '{{ name }} INTEGER {{ null }} {{ default }} {{ unique }}',
 			'timestamp' => '{{ name }} INTEGER {{ null }} {{ default }} {{ unique }}',
-			'bool'      => '{{ name }} INTEGER {{ null }} {{ default }} {{ unique }}'
+			'bool'      => '{{ name }} INTEGER {{ null }} {{ default }} {{ unique }}',
+			'float'     => '{{ name }} REAL {{ null }} {{ default }} {{ unique }}',
+			'decimal'   => '{{ name }} REAL {{ null }} {{ default }} {{ unique }}'
 		];
 	}
 
 	/**
 	 * Combines an identifier (table and column)
 	 *
-	 * @param $table string
-	 * @param $column string
-	 * @param $values bool Whether the identifier is going to be used for a VALUES clause;
-	 *                        only relevant for SQLite
-	 * @return string
+	 * @param bool $values Whether the identifier is going to be
+	 *                     used for a VALUES clause; only relevant
+	 *                     for SQLite
 	 */
 	public function combineIdentifier(string $table, string $column, bool $values = false): string
 	{
@@ -111,9 +108,6 @@ class Sqlite extends Sql
 
 	/**
 	 * Quotes an identifier (table *or* column)
-	 *
-	 * @param $identifier string
-	 * @return string
 	 */
 	public function quoteIdentifier(string $identifier): string
 	{
@@ -132,8 +126,6 @@ class Sqlite extends Sql
 	/**
 	 * Returns a query to list the tables of the current database;
 	 * the query needs to return rows with a column `name`
-	 *
-	 * @return string
 	 */
 	public function tables(): array
 	{

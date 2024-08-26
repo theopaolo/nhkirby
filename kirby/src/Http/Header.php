@@ -17,8 +17,7 @@ use Kirby\Filesystem\F;
 class Header
 {
 	// configuration
-	public static $codes = [
-
+	public static array $codes = [
 		// successful
 		'_200' => 'OK',
 		'_201' => 'Created',
@@ -56,13 +55,13 @@ class Header
 	/**
 	 * Sends a content type header
 	 *
-	 * @param string $mime
-	 * @param string $charset
-	 * @param bool $send
 	 * @return string|void
 	 */
-	public static function contentType(string $mime, string $charset = 'UTF-8', bool $send = true)
-	{
+	public static function contentType(
+		string $mime,
+		string $charset = 'UTF-8',
+		bool $send = true
+	) {
 		if ($found = F::extensionToMime($mime)) {
 			$mime = $found;
 		}
@@ -82,13 +81,11 @@ class Header
 
 	/**
 	 * Creates headers by key and value
-	 *
-	 * @param string|array $key
-	 * @param string|null $value
-	 * @return string
 	 */
-	public static function create($key, string $value = null): string
-	{
+	public static function create(
+		string|array $key,
+		string|null $value = null
+	): string {
 		if (is_array($key) === true) {
 			$headers = [];
 
@@ -99,20 +96,21 @@ class Header
 			return implode("\r\n", $headers);
 		}
 
-		// prevent header injection by stripping any newline characters from single headers
+		// prevent header injection by stripping
+		// any newline characters from single headers
 		return str_replace(["\r", "\n"], '', $key . ': ' . $value);
 	}
 
 	/**
 	 * Shortcut for static::contentType()
 	 *
-	 * @param string $mime
-	 * @param string $charset
-	 * @param bool $send
 	 * @return string|void
 	 */
-	public static function type(string $mime, string $charset = 'UTF-8', bool $send = true)
-	{
+	public static function type(
+		string $mime,
+		string $charset = 'UTF-8',
+		bool $send = true
+	) {
 		return static::contentType($mime, $charset, $send);
 	}
 
@@ -123,21 +121,30 @@ class Header
 	 * and send a custom status code and message, use a $code string formatted
 	 * as 3 digits followed by a space and a message, e.g. '999 Custom Status'.
 	 *
-	 * @param int|string $code The HTTP status code
+	 * @param int|string|null $code The HTTP status code
 	 * @param bool $send If set to false the header will be returned instead
 	 * @return string|void
+	 * @psalm-return ($send is false ? string : void)
 	 */
-	public static function status($code = null, bool $send = true)
-	{
+	public static function status(
+		int|string|null $code = null,
+		bool $send = true
+	) {
 		$codes    = static::$codes;
 		$protocol = Environment::getGlobally('SERVER_PROTOCOL', 'HTTP/1.1');
 
 		// allow full control over code and message
-		if (is_string($code) === true && preg_match('/^\d{3} \w.+$/', $code) === 1) {
+		if (
+			is_string($code) === true &&
+			preg_match('/^\d{3} \w.+$/', $code) === 1
+		) {
 			$message = substr(rtrim($code), 4);
 			$code    = substr($code, 0, 3);
 		} else {
-			$code    = array_key_exists('_' . $code, $codes) === false ? 500 : $code;
+			if (array_key_exists('_' . $code, $codes) === false) {
+				$code = 500;
+			}
+
 			$message = $codes['_' . $code] ?? 'Something went wrong';
 		}
 
@@ -154,7 +161,6 @@ class Header
 	/**
 	 * Sends a 200 header
 	 *
-	 * @param bool $send
 	 * @return string|void
 	 */
 	public static function success(bool $send = true)
@@ -165,7 +171,6 @@ class Header
 	/**
 	 * Sends a 201 header
 	 *
-	 * @param bool $send
 	 * @return string|void
 	 */
 	public static function created(bool $send = true)
@@ -176,7 +181,6 @@ class Header
 	/**
 	 * Sends a 202 header
 	 *
-	 * @param bool $send
 	 * @return string|void
 	 */
 	public static function accepted(bool $send = true)
@@ -187,7 +191,6 @@ class Header
 	/**
 	 * Sends a 400 header
 	 *
-	 * @param bool $send
 	 * @return string|void
 	 */
 	public static function error(bool $send = true)
@@ -198,7 +201,6 @@ class Header
 	/**
 	 * Sends a 403 header
 	 *
-	 * @param bool $send
 	 * @return string|void
 	 */
 	public static function forbidden(bool $send = true)
@@ -209,7 +211,6 @@ class Header
 	/**
 	 * Sends a 404 header
 	 *
-	 * @param bool $send
 	 * @return string|void
 	 */
 	public static function notfound(bool $send = true)
@@ -220,7 +221,6 @@ class Header
 	/**
 	 * Sends a 404 header
 	 *
-	 * @param bool $send
 	 * @return string|void
 	 */
 	public static function missing(bool $send = true)
@@ -231,7 +231,6 @@ class Header
 	/**
 	 * Sends a 410 header
 	 *
-	 * @param bool $send
 	 * @return string|void
 	 */
 	public static function gone(bool $send = true)
@@ -242,7 +241,6 @@ class Header
 	/**
 	 * Sends a 500 header
 	 *
-	 * @param bool $send
 	 * @return string|void
 	 */
 	public static function panic(bool $send = true)
@@ -253,7 +251,6 @@ class Header
 	/**
 	 * Sends a 503 header
 	 *
-	 * @param bool $send
 	 * @return string|void
 	 */
 	public static function unavailable(bool $send = true)
@@ -264,13 +261,13 @@ class Header
 	/**
 	 * Sends a redirect header
 	 *
-	 * @param string $url
-	 * @param int $code
-	 * @param bool $send
 	 * @return string|void
 	 */
-	public static function redirect(string $url, int $code = 302, bool $send = true)
-	{
+	public static function redirect(
+		string $url,
+		int $code = 302,
+		bool $send = true
+	) {
 		$status   = static::status($code, false);
 		$location = 'Location:' . Url::unIdn($url);
 
@@ -288,7 +285,7 @@ class Header
 	 *
 	 * @param array $params Check out the defaults array for available parameters
 	 */
-	public static function download(array $params = [])
+	public static function download(array $params = []): void
 	{
 		$defaults = [
 			'name'     => 'download',

@@ -21,11 +21,11 @@ use Throwable;
  */
 class Sessions
 {
-	protected $store;
-	protected $mode;
-	protected $cookieName;
+	protected SessionStore $store;
+	protected string $mode;
+	protected string $cookieName;
 
-	protected $cache = [];
+	protected array $cache = [];
 
 	/**
 	 * Creates a new Sessions instance
@@ -36,39 +36,30 @@ class Sessions
 	 *                       - `cookieName`: Name to use for the session cookie; defaults to `kirby_session`
 	 *                       - `gcInterval`: How often should the garbage collector be run?; integer or `false` for never; defaults to `100`
 	 */
-	public function __construct($store, array $options = [])
+	public function __construct(SessionStore|string $store, array $options = [])
 	{
-		if (is_string($store)) {
-			$this->store = new FileSessionStore($store);
-		} elseif (is_a($store, 'Kirby\Session\SessionStore') === true) {
-			$this->store = $store;
-		} else {
-			throw new InvalidArgumentException([
-				'data'      => ['method' => 'Sessions::__construct', 'argument' => 'store'],
-				'translate' => false
-			]);
-		}
+		$this->store = match (is_string($store)) {
+			true    => new FileSessionStore($store),
+			default => $store
+		};
 
 		$this->mode       = $options['mode']       ?? 'cookie';
 		$this->cookieName = $options['cookieName'] ?? 'kirby_session';
 		$gcInterval       = $options['gcInterval'] ?? 100;
 
 		// validate options
-		if (!in_array($this->mode, ['cookie', 'header', 'manual'])) {
+		if (in_array($this->mode, ['cookie', 'header', 'manual']) === false) {
 			throw new InvalidArgumentException([
-				'data'      => ['method' => 'Sessions::__construct', 'argument' => '$options[\'mode\']'],
-				'translate' => false
-			]);
-		}
-		if (!is_string($this->cookieName)) {
-			throw new InvalidArgumentException([
-				'data'      => ['method' => 'Sessions::__construct', 'argument' => '$options[\'cookieName\']'],
+				'data' => [
+					'method'   => 'Sessions::__construct',
+					'argument' => '$options[\'mode\']'
+				],
 				'translate' => false
 			]);
 		}
 
 		// trigger automatic garbage collection with the given probability
-		if (is_int($gcInterval) && $gcInterval > 0) {
+		if (is_int($gcInterval) === true && $gcInterval > 0) {
 			// convert the interval into a probability between 0 and 1
 			$gcProbability = 1 / $gcInterval;
 
@@ -81,7 +72,10 @@ class Sessions
 			}
 		} elseif ($gcInterval !== false) {
 			throw new InvalidArgumentException([
-				'data'      => ['method' => 'Sessions::__construct', 'argument' => '$options[\'gcInterval\']'],
+				'data' => [
+					'method'   => 'Sessions::__construct',
+					'argument' => '$options[\'gcInterval\']'
+				],
 				'translate' => false
 			]);
 		}
@@ -96,14 +90,11 @@ class Sessions
 	 *                       - `expiryTime`: Time the session expires (date string or timestamp); defaults to `+ 2 hours`
 	 *                       - `timeout`: Activity timeout in seconds (integer or false for none); defaults to `1800` (half an hour)
 	 *                       - `renewable`: Should it be possible to extend the expiry date?; defaults to `true`
-	 * @return \Kirby\Session\Session
 	 */
-	public function create(array $options = [])
+	public function create(array $options = []): Session
 	{
 		// fall back to default mode
-		if (!isset($options['mode'])) {
-			$options['mode'] = $this->mode;
-		}
+		$options['mode'] ??= $this->mode;
 
 		return new Session($this, null, $options);
 	}
@@ -112,16 +103,15 @@ class Sessions
 	 * Returns the specified Session object
 	 *
 	 * @param string $token Session token, either including or without the key
-	 * @param string $mode Optional transmission mode override
-	 * @return \Kirby\Session\Session
+	 * @param string|null $mode Optional transmission mode override
 	 */
-	public function get(string $token, string $mode = null)
+	public function get(string $token, string $mode = null): Session
 	{
-		if (isset($this->cache[$token])) {
-			return $this->cache[$token];
-		}
-
-		return $this->cache[$token] = new Session($this, $token, ['mode' => $mode ?? $this->mode]);
+		return $this->cache[$token] ??= new Session(
+			$this,
+			$token,
+			['mode' => $mode ?? $this->mode]
+		);
 	}
 
 	/**
@@ -131,38 +121,33 @@ class Sessions
 	 * - In `manual` mode: Fails and throws an Exception
 	 *
 	 * @return \Kirby\Session\Session|null Either the current session or null in case there isn't one
+	 * @throws \Kirby\Exception\Exception
+	 * @throws \Kirby\Exception\LogicException
 	 */
-	public function current()
+	public function current(): Session|null
 	{
-		$token = null;
-		switch ($this->mode) {
-			case 'cookie':
-				$token = $this->tokenFromCookie();
-				break;
-			case 'header':
-				$token = $this->tokenFromHeader();
-				break;
-			case 'manual':
-				throw new LogicException([
-					'key'       => 'session.sessions.manualMode',
-					'fallback'  => 'Cannot automatically get current session in manual mode',
-					'translate' => false,
-					'httpCode'  => 500
-				]);
-			default:
-				// unexpected error that shouldn't occur
-				throw new Exception(['translate' => false]); // @codeCoverageIgnore
-		}
+		$token = match ($this->mode) {
+			'cookie' => $this->tokenFromCookie(),
+			'header' => $this->tokenFromHeader(),
+			'manual' => throw new LogicException([
+				'key'       => 'session.sessions.manualMode',
+				'fallback'  => 'Cannot automatically get current session in manual mode',
+				'translate' => false,
+				'httpCode'  => 500
+			]),
+			// unexpected error that shouldn't occur
+			default => throw new Exception(['translate' => false]) // @codeCoverageIgnore
+		};
 
 		// no token was found, no session
-		if (!is_string($token)) {
+		if (is_string($token) === false) {
 			return null;
 		}
 
 		// token was found, try to get the session
 		try {
 			return $this->get($token);
-		} catch (Throwable $e) {
+		} catch (Throwable) {
 			return null;
 		}
 	}
@@ -175,7 +160,7 @@ class Sessions
 	 *
 	 * @return \Kirby\Session\Session|null Either the current session or null in case there isn't one
 	 */
-	public function currentDetected()
+	public function currentDetected(): Session|null
 	{
 		$tokenFromHeader = $this->tokenFromHeader();
 		$tokenFromCookie = $this->tokenFromCookie();
@@ -184,35 +169,31 @@ class Sessions
 		$token = $tokenFromHeader ?? $tokenFromCookie;
 
 		// no token was found, no session
-		if (!is_string($token)) {
+		if (is_string($token) === false) {
 			return null;
 		}
 
 		// token was found, try to get the session
 		try {
-			$mode = (is_string($tokenFromHeader)) ? 'header' : 'cookie';
+			$mode = is_string($tokenFromHeader) ? 'header' : 'cookie';
 			return $this->get($token, $mode);
-		} catch (Throwable $e) {
+		} catch (Throwable) {
 			return null;
 		}
 	}
 
 	/**
 	 * Getter for the session store instance
-	 * Used internally
-	 *
-	 * @return \Kirby\Session\SessionStore
+	 * @internal
 	 */
-	public function store()
+	public function store(): SessionStore
 	{
 		return $this->store;
 	}
 
 	/**
 	 * Getter for the cookie name
-	 * Used internally
-	 *
-	 * @return string
+	 * @internal
 	 */
 	public function cookieName(): string
 	{
@@ -224,10 +205,8 @@ class Sessions
 	 *
 	 * If the `gcInterval` is configured, this is done automatically
 	 * on init of the Sessions object.
-	 *
-	 * @return void
 	 */
-	public function collectGarbage()
+	public function collectGarbage(): void
 	{
 		$this->store()->collectGarbage();
 	}
@@ -239,49 +218,44 @@ class Sessions
 	 * @internal
 	 * @param \Kirby\Session\Session $session Session instance to push to the cache
 	 */
-	public function updateCache(Session $session)
+	public function updateCache(Session $session): void
 	{
 		$this->cache[$session->token()] = $session;
 	}
 
 	/**
 	 * Returns the auth token from the cookie
-	 *
-	 * @return string|null
 	 */
-	protected function tokenFromCookie()
+	protected function tokenFromCookie(): string|null
 	{
 		$value = Cookie::get($this->cookieName());
 
-		if (is_string($value)) {
-			return $value;
-		} else {
+		if (is_string($value) === false) {
 			return null;
 		}
+
+		return $value;
 	}
 
 	/**
 	 * Returns the auth token from the Authorization header
-	 *
-	 * @return string|null
 	 */
-	protected function tokenFromHeader()
+	protected function tokenFromHeader(): string|null
 	{
 		$request = new Request();
 		$headers = $request->headers();
 
 		// check if the header exists at all
-		if (!isset($headers['Authorization'])) {
-			return null;
+		if ($header = $headers['Authorization'] ?? null) {
+			// check if the header uses the "Session" scheme
+			if (Str::startsWith($header, 'Session ', true) !== true) {
+				return null;
+			}
+
+			// return the part after the scheme
+			return substr($header, 8);
 		}
 
-		// check if the header uses the "Session" scheme
-		$header = $headers['Authorization'];
-		if (Str::startsWith($header, 'Session ', true) !== true) {
-			return null;
-		}
-
-		// return the part after the scheme
-		return substr($header, 8);
+		return null;
 	}
 }

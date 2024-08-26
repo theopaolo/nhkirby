@@ -19,9 +19,8 @@ class Cookie
 {
 	/**
 	 * Key to use for cookie signing
-	 * @var string
 	 */
-	public static $key = 'KirbyHttpCookieKey';
+	public static string $key = 'KirbyHttpCookieKey';
 
 	/**
 	 * Set a new cookie
@@ -40,8 +39,11 @@ class Cookie
 	 * @return bool true: cookie was created,
 	 *              false: cookie creation failed
 	 */
-	public static function set(string $key, string $value, array $options = []): bool
-	{
+	public static function set(
+		string $key,
+		string $value,
+		array $options = []
+	): bool {
 		// modify CMS caching behavior
 		static::trackUsage($key);
 
@@ -60,27 +62,31 @@ class Cookie
 		$_COOKIE[$key] = $value;
 
 		// store the cookie
-		$options = compact('expires', 'path', 'domain', 'secure', 'httponly', 'samesite');
-		return setcookie($key, $value, $options);
+		return setcookie(
+			$key,
+			$value,
+			compact('expires', 'path', 'domain', 'secure', 'httponly', 'samesite')
+		);
 	}
 
 	/**
 	 * Calculates the lifetime for a cookie
 	 *
 	 * @param int $minutes Number of minutes or timestamp
-	 * @return int
 	 */
 	public static function lifetime(int $minutes): int
 	{
+		// absolute timestamp
 		if ($minutes > 1000000000) {
-			// absolute timestamp
 			return $minutes;
-		} elseif ($minutes > 0) {
-			// minutes from now
-			return time() + ($minutes * 60);
-		} else {
-			return 0;
 		}
+
+		// minutes from now
+		if ($minutes > 0) {
+			return time() + ($minutes * 60);
+		}
+
+		return 0;
 	}
 
 	/**
@@ -100,8 +106,11 @@ class Cookie
 	 * @return bool true: cookie was created,
 	 *              false: cookie creation failed
 	 */
-	public static function forever(string $key, string $value, array $options = []): bool
-	{
+	public static function forever(
+		string $key,
+		string $value,
+		array $options = []
+	): bool {
 		// 9999-12-31 if supported (lower on 32-bit servers)
 		$options['lifetime'] = min(253402214400, PHP_INT_MAX);
 		return static::set($key, $value, $options);
@@ -111,19 +120,19 @@ class Cookie
 	 * Get a cookie value
 	 *
 	 * <code>
-	 *
 	 * cookie::get('mycookie', 'peter');
 	 * // sample output: 'hello' or if the cookie is not set 'peter'
-	 *
 	 * </code>
 	 *
 	 * @param string|null $key The name of the cookie
 	 * @param string|null $default The default value, which should be returned
 	 *                             if the cookie has not been found
-	 * @return mixed The found value
+	 * @return string|array|null The found value
 	 */
-	public static function get(string $key = null, string $default = null)
-	{
+	public static function get(
+		string|null $key = null,
+		string|null $default = null
+	): string|array|null {
 		if ($key === null) {
 			return $_COOKIE;
 		}
@@ -131,15 +140,15 @@ class Cookie
 		// modify CMS caching behavior
 		static::trackUsage($key);
 
-		$value = $_COOKIE[$key] ?? null;
-		return empty($value) ? $default : static::parse($value);
+		if ($value = $_COOKIE[$key] ?? null) {
+			return static::parse($value);
+		}
+
+		return $default;
 	}
 
 	/**
 	 * Checks if a cookie exists
-	 *
-	 * @param string $key
-	 * @return bool
 	 */
 	public static function exists(string $key): bool
 	{
@@ -149,9 +158,6 @@ class Cookie
 	/**
 	 * Creates a HMAC for the cookie value
 	 * Used as a cookie signature to prevent easy tampering with cookie data
-	 *
-	 * @param string $value
-	 * @return string
 	 */
 	protected static function hmac(string $value): string
 	{
@@ -161,11 +167,8 @@ class Cookie
 	/**
 	 * Parses the hashed value from a cookie
 	 * and tries to extract the value
-	 *
-	 * @param string $string
-	 * @return mixed
 	 */
-	protected static function parse(string $string)
+	protected static function parse(string $string): string|null
 	{
 		// if no hash-value separator is present, we can't parse the value
 		if (strpos($string, '+') === false) {
@@ -178,7 +181,7 @@ class Cookie
 
 		// if the hash or the value is missing at all return null
 		// $value can be an empty string, $hash can't be!
-		if (!is_string($hash) || $hash === '' || !is_string($value)) {
+		if ($hash === '') {
 			return null;
 		}
 
@@ -207,7 +210,7 @@ class Cookie
 	 */
 	public static function remove(string $key): bool
 	{
-		if (isset($_COOKIE[$key])) {
+		if (isset($_COOKIE[$key]) === true) {
 			unset($_COOKIE[$key]);
 			return setcookie($key, '', 1, '/') && setcookie($key, false);
 		}
@@ -221,17 +224,11 @@ class Cookie
 	 * this ensures that the response is only cached for visitors who don't
 	 * have this cookie set;
 	 * https://github.com/getkirby/kirby/issues/4423#issuecomment-1166300526
-	 *
-	 * @param string $key
-	 * @return void
 	 */
 	protected static function trackUsage(string $key): void
 	{
 		// lazily request the instance for non-CMS use cases
 		$kirby = App::instance(null, true);
-
-		if ($kirby) {
-			$kirby->response()->usesCookie($key);
-		}
+		$kirby?->response()->usesCookie($key);
 	}
 }

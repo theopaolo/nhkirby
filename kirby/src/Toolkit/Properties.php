@@ -7,6 +7,8 @@ use ReflectionMethod;
 
 /**
  * Properties
+ * @deprecated 4.0.0 Will be remove in Kirby 5
+ * @codeCoverageIgnore
  *
  * @package   Kirby Toolkit
  * @author    Bastian Allgeier <bastian@getkirby.com>
@@ -122,7 +124,6 @@ trait Properties
 
 		// handle empty values
 		if ($value === null) {
-
 			// replace null with a default value, if a default handler exists
 			if (method_exists($this, 'default' . $name) === true) {
 				$value = $this->{'default' . $name}();

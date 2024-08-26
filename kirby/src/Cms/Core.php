@@ -2,6 +2,15 @@
 
 namespace Kirby\Cms;
 
+use Kirby\Cache\ApcuCache;
+use Kirby\Cache\FileCache;
+use Kirby\Cache\MemCached;
+use Kirby\Cache\MemoryCache;
+use Kirby\Cms\Auth\EmailChallenge;
+use Kirby\Cms\Auth\TotpChallenge;
+use Kirby\Form\Field\BlocksField;
+use Kirby\Form\Field\LayoutField;
+
 /**
  * The Core class lists all parts of Kirby
  * that need to be loaded or initalized in order
@@ -22,27 +31,16 @@ namespace Kirby\Cms;
 class Core
 {
 	/**
-	 * @var array
+	 * Optional override for the auto-detected index root
 	 */
-	protected $cache = [];
+	public static string|null $indexRoot = null;
 
-	/**
-	 * @var \Kirby\Cms\App
-	 */
-	protected $kirby;
+	protected array $cache = [];
+	protected string $root;
 
-	/**
-	 * @var string
-	 */
-	protected $root;
-
-	/**
-	 * @param \Kirby\Cms\App $kirby
-	 */
-	public function __construct(App $kirby)
+	public function __construct(protected App $kirby)
 	{
-		$this->kirby = $kirby;
-		$this->root  = dirname(__DIR__, 2) . '/config';
+		$this->root = dirname(__DIR__, 2) . '/config';
 	}
 
 	/**
@@ -50,11 +48,8 @@ class Core
 	 *
 	 * This is a shortcut for `$kirby->core()->load()->area()`
 	 * to give faster access to original area code in plugins.
-	 *
-	 * @param string $name
-	 * @return array|null
 	 */
-	public function area(string $name): ?array
+	public function area(string $name): array|null
 	{
 		return $this->load()->area($name);
 	}
@@ -63,17 +58,17 @@ class Core
 	 * Returns a list of all paths to area definition files
 	 *
 	 * They are located in `/kirby/config/areas`
-	 *
-	 * @return array
 	 */
 	public function areas(): array
 	{
 		return [
 			'account'      => $this->root . '/areas/account.php',
 			'installation' => $this->root . '/areas/installation.php',
+			'lab'          => $this->root . '/areas/lab.php',
 			'languages'    => $this->root . '/areas/languages.php',
 			'login'        => $this->root . '/areas/login.php',
 			'logout'       => $this->root . '/areas/logout.php',
+			'search'       => $this->root . '/areas/search.php',
 			'site'         => $this->root . '/areas/site.php',
 			'system'       => $this->root . '/areas/system.php',
 			'users'        => $this->root . '/areas/users.php',
@@ -82,13 +77,12 @@ class Core
 
 	/**
 	 * Returns a list of all default auth challenge classes
-	 *
-	 * @return array
 	 */
 	public function authChallenges(): array
 	{
 		return [
-			'email' => 'Kirby\Cms\Auth\EmailChallenge'
+			'email' => EmailChallenge::class,
+			'totp'  => TotpChallenge::class,
 		];
 	}
 
@@ -96,8 +90,6 @@ class Core
 	 * Returns a list of all paths to blueprint presets
 	 *
 	 * They are located in `/kirby/config/presets`
-	 *
-	 * @return array
 	 */
 	public function blueprintPresets(): array
 	{
@@ -109,12 +101,10 @@ class Core
 	}
 
 	/**
-	 * Returns a list of all paths to core blueprints
+	 * Returns a list of paths to core blueprints or
+	 * the blueprint in array form
 	 *
-	 * They are located in `/kirby/config/blueprints`.
 	 * Block blueprints are located in `/kirby/config/blocks`
-	 *
-	 * @return array
 	 */
 	public function blueprints(): array
 	{
@@ -133,28 +123,45 @@ class Core
 			'blocks/video'    => $this->root . '/blocks/video/video.yml',
 
 			// file blueprints
-			'files/default' => $this->root . '/blueprints/files/default.yml',
+			'files/default' => ['title' => 'File'],
 
 			// page blueprints
-			'pages/default' => $this->root . '/blueprints/pages/default.yml',
+			'pages/default' => ['title' => 'Page'],
 
 			// site blueprints
-			'site' => $this->root . '/blueprints/site.yml'
+			'site' => [
+				'title' => 'Site',
+				'sections' => [
+					'pages' => [
+						'headline' => ['*' => 'pages'],
+						'type'	   => 'pages'
+					]
+				]
+			]
+		];
+	}
+
+	/**
+	 * Returns a list of all core caches
+	 */
+	public function caches(): array
+	{
+		return [
+			'updates' => true,
+			'uuid'    => true,
 		];
 	}
 
 	/**
 	 * Returns a list of all cache driver classes
-	 *
-	 * @return array
 	 */
 	public function cacheTypes(): array
 	{
 		return [
-			'apcu'      => 'Kirby\Cache\ApcuCache',
-			'file'      => 'Kirby\Cache\FileCache',
-			'memcached' => 'Kirby\Cache\MemCached',
-			'memory'    => 'Kirby\Cache\MemoryCache',
+			'apcu'      => ApcuCache::class,
+			'file'      => FileCache::class,
+			'memcached' => MemCached::class,
+			'memory'    => MemoryCache::class,
 		];
 	}
 
@@ -163,8 +170,6 @@ class Core
 	 *
 	 * The component functions can be found in
 	 * `/kirby/config/components.php`
-	 *
-	 * @return array
 	 */
 	public function components(): array
 	{
@@ -173,8 +178,6 @@ class Core
 
 	/**
 	 * Returns a map of all field method aliases
-	 *
-	 * @return array
 	 */
 	public function fieldMethodAliases(): array
 	{
@@ -199,8 +202,6 @@ class Core
 	 * Returns an array of all field method functions
 	 *
 	 * Field methods are stored in `/kirby/config/methods.php`
-	 *
-	 * @return array
 	 */
 	public function fieldMethods(): array
 	{
@@ -211,8 +212,6 @@ class Core
 	 * Returns an array of paths for field mixins
 	 *
 	 * They are located in `/kirby/config/fields/mixins`
-	 *
-	 * @return array
 	 */
 	public function fieldMixins(): array
 	{
@@ -236,14 +235,13 @@ class Core
 	 *
 	 * The more complex field classes can be found in
 	 * `/kirby/src/Form/Fields`
-	 *
-	 * @return array
 	 */
 	public function fields(): array
 	{
 		return [
-			'blocks'      => 'Kirby\Form\Field\BlocksField',
+			'blocks'      => BlocksField::class,
 			'checkboxes'  => $this->root . '/fields/checkboxes.php',
+			'color'       => $this->root . '/fields/color.php',
 			'date'        => $this->root . '/fields/date.php',
 			'email'       => $this->root . '/fields/email.php',
 			'files'       => $this->root . '/fields/files.php',
@@ -251,11 +249,13 @@ class Core
 			'headline'    => $this->root . '/fields/headline.php',
 			'hidden'      => $this->root . '/fields/hidden.php',
 			'info'        => $this->root . '/fields/info.php',
-			'layout'      => 'Kirby\Form\Field\LayoutField',
+			'layout'      => LayoutField::class,
 			'line'        => $this->root . '/fields/line.php',
+			'link'        => $this->root . '/fields/link.php',
 			'list'        => $this->root . '/fields/list.php',
 			'multiselect' => $this->root . '/fields/multiselect.php',
 			'number'      => $this->root . '/fields/number.php',
+			'object'      => $this->root . '/fields/object.php',
 			'pages'       => $this->root . '/fields/pages.php',
 			'radio'       => $this->root . '/fields/radio.php',
 			'range'       => $this->root . '/fields/range.php',
@@ -277,8 +277,6 @@ class Core
 
 	/**
 	 * Returns a map of all kirbytag aliases
-	 *
-	 * @return array
 	 */
 	public function kirbyTagAliases(): array
 	{
@@ -292,8 +290,6 @@ class Core
 	 * Returns an array of all kirbytag definitions
 	 *
 	 * They are located in `/kirby/config/tags.php`
-	 *
-	 * @return array
 	 */
 	public function kirbyTags(): array
 	{
@@ -306,10 +302,8 @@ class Core
 	 * The loader is set to not include plugins.
 	 * This way, you can access original Kirby core code
 	 * through this load method.
-	 *
-	 * @return \Kirby\Cms\Loader
 	 */
-	public function load()
+	public function load(): Loader
 	{
 		return new Loader($this->kirby, false);
 	}
@@ -318,8 +312,6 @@ class Core
 	 * Returns all absolute paths to important directories
 	 *
 	 * Roots are resolved and baked in `\Kirby\Cms\App::bakeRoots()`
-	 *
-	 * @return array
 	 */
 	public function roots(): array
 	{
@@ -329,7 +321,7 @@ class Core
 			'i18n:translations' => fn (array $roots) => $roots['i18n'] . '/translations',
 			'i18n:rules'  => fn (array $roots) => $roots['i18n'] . '/rules',
 
-			'index'       => fn (array $roots) => dirname(__DIR__, 3),
+			'index'       => fn (array $roots) => static::$indexRoot ?? dirname(__DIR__, 3),
 			'assets'      => fn (array $roots) => $roots['index'] . '/assets',
 			'content'     => fn (array $roots) => $roots['index'] . '/content',
 			'media'       => fn (array $roots) => $roots['index'] . '/media',
@@ -339,6 +331,7 @@ class Core
 			'blueprints'  => fn (array $roots) => $roots['site'] . '/blueprints',
 			'cache'       => fn (array $roots) => $roots['site'] . '/cache',
 			'collections' => fn (array $roots) => $roots['site'] . '/collections',
+			'commands'    => fn (array $roots) => $roots['site'] . '/commands',
 			'config'      => fn (array $roots) => $roots['site'] . '/config',
 			'controllers' => fn (array $roots) => $roots['site'] . '/controllers',
 			'languages'   => fn (array $roots) => $roots['site'] . '/languages',
@@ -359,8 +352,6 @@ class Core
 	 * Routes are split into `before` and `after` routes.
 	 *
 	 * Plugin routes will be injected inbetween.
-	 *
-	 * @return array
 	 */
 	public function routes(): array
 	{
@@ -371,8 +362,6 @@ class Core
 	 * Returns a list of all paths to core block snippets
 	 *
 	 * They are located in `/kirby/config/blocks`
-	 *
-	 * @return array
 	 */
 	public function snippets(): array
 	{
@@ -395,8 +384,6 @@ class Core
 	 * Returns a list of paths to section mixins
 	 *
 	 * They are located in `/kirby/config/sections/mixins`
-	 *
-	 * @return array
 	 */
 	public function sectionMixins(): array
 	{
@@ -419,8 +406,6 @@ class Core
 	 * Returns a list of all section definitions
 	 *
 	 * They are located in `/kirby/config/sections`
-	 *
-	 * @return array
 	 */
 	public function sections(): array
 	{
@@ -437,8 +422,6 @@ class Core
 	 * Returns a list of paths to all system templates
 	 *
 	 * They are located in `/kirby/config/templates`
-	 *
-	 * @return array
 	 */
 	public function templates(): array
 	{
@@ -452,8 +435,6 @@ class Core
 	 * Returns an array with all system URLs
 	 *
 	 * URLs are resolved and baked in `\Kirby\Cms\App::bakeUrls()`
-	 *
-	 * @return array
 	 */
 	public function urls(): array
 	{
@@ -465,9 +446,9 @@ class Core
 
 				if (empty($path) === true) {
 					return $urls['index'];
-				} else {
-					return $urls['base'] . '/' . $path;
 				}
+
+				return $urls['base'] . '/' . $path;
 			},
 			'assets' => fn (array $urls) => $urls['base'] . '/assets',
 			'api'    => fn (array $urls) => $urls['base'] . '/' . $this->kirby->option('api.slug', 'api'),

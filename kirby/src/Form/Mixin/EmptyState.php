@@ -4,14 +4,14 @@ namespace Kirby\Form\Mixin;
 
 trait EmptyState
 {
-	protected $empty;
+	protected string|null $empty;
 
-	protected function setEmpty($empty = null)
+	protected function setEmpty(string|array|null $empty = null): void
 	{
 		$this->empty = $this->i18n($empty);
 	}
 
-	public function empty(): ?string
+	public function empty(): string|null
 	{
 		return $this->stringTemplate($this->empty);
 	}

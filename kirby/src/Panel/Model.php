@@ -2,6 +2,10 @@
 
 namespace Kirby\Panel;
 
+use Closure;
+use Kirby\Cms\File as CmsFile;
+use Kirby\Cms\ModelWithContent;
+use Kirby\Filesystem\Asset;
 use Kirby\Form\Form;
 use Kirby\Http\Uri;
 use Kirby\Toolkit\A;
@@ -18,23 +22,13 @@ use Kirby\Toolkit\A;
  */
 abstract class Model
 {
-	/**
-	 * @var \Kirby\Cms\ModelWithContent
-	 */
-	protected $model;
-
-	/**
-	 * @param \Kirby\Cms\ModelWithContent $model
-	 */
-	public function __construct($model)
-	{
-		$this->model = $model;
+	public function __construct(
+		protected ModelWithContent $model
+	) {
 	}
 
 	/**
 	 * Get the content values for the model
-	 *
-	 * @return array
 	 */
 	public function content(): array
 	{
@@ -47,20 +41,14 @@ abstract class Model
 	 * @internal
 	 *
 	 * @param string $type markdown or kirbytext
-	 * @param mixed ...$args
-	 * @return string|null
 	 */
-	public function dragTextFromCallback(string $type, ...$args): ?string
+	public function dragTextFromCallback(string $type, ...$args): string|null
 	{
 		$option   = 'panel.' . $type . '.' . $this->model::CLASS_ALIAS . 'DragText';
 		$callback = $this->model->kirby()->option($option);
 
-		if (
-			empty($callback) === false &&
-			is_a($callback, 'Closure') === true &&
-			($dragText = $callback($this->model, ...$args)) !== null
-		) {
-			return $dragText;
+		if ($callback instanceof Closure) {
+			return $callback($this->model, ...$args);
 		}
 
 		return null;
@@ -74,9 +62,8 @@ abstract class Model
 	 * @internal
 	 *
 	 * @param string|null $type (`auto`|`kirbytext`|`markdown`)
-	 * @return string
 	 */
-	public function dragTextType(string $type = null): string
+	public function dragTextType(string|null $type = null): string
 	{
 		$type ??= 'auto';
 
@@ -92,98 +79,72 @@ abstract class Model
 	 * Returns the setup for a dropdown option
 	 * which is used in the changes dropdown
 	 * for example.
-	 *
-	 * @return array
 	 */
 	public function dropdownOption(): array
 	{
 		return [
-			'icon' => 'page',
-			'link' => $this->url(),
-			'text' => $this->model->id(),
+			'icon'  => 'page',
+			'image' => $this->image(['back' => 'black']),
+			'link'  => $this->url(true),
+			'text'  => $this->model->id(),
 		];
 	}
 
 	/**
 	 * Returns the Panel image definition
-	 *
 	 * @internal
-	 *
-	 * @param string|array|false|null $settings
-	 * @return array|null
 	 */
-	public function image($settings = [], string $layout = 'list'): ?array
-	{
+	public function image(
+		string|array|false|null $settings = [],
+		string $layout = 'list'
+	): array|null {
 		// completely switched off
 		if ($settings === false) {
 			return null;
 		}
 
+		// switched off from blueprint,
+		// only if not overwritten by $settings
+		$blueprint = $this->model->blueprint()->image();
+
+		if ($blueprint === false) {
+			if (empty($settings) === true) {
+				return null;
+			}
+
+			$blueprint = null;
+		}
+
 		// skip image thumbnail if option
 		// is explicitly set to show the icon
 		if ($settings === 'icon') {
-			$settings = [
-				'query' => false
-			];
+			$settings = ['query' => false];
 		} elseif (is_string($settings) === true) {
 			// convert string settings to proper array
-			$settings = [
-				'query' => $settings
-			];
+			$settings = ['query' => $settings];
 		}
 
 		// merge with defaults and blueprint option
 		$settings = array_merge(
 			$this->imageDefaults(),
 			$settings ?? [],
-			$this->model->blueprint()->image() ?? [],
+			$blueprint ?? [],
 		);
 
 		if ($image = $this->imageSource($settings['query'] ?? null)) {
 			// main url
 			$settings['url'] = $image->url();
 
-			// only create srcsets for resizable files
 			if ($image->isResizable() === true) {
-				$settings['src'] = static::imagePlaceholder();
-
-				switch ($layout) {
-					case 'cards':
-						$sizes = [352, 864, 1408];
-						break;
-					case 'cardlets':
-						$sizes = [96, 192];
-						break;
-					case 'list':
-					default:
-						$sizes = [38, 76];
-						break;
-				}
-
-				if (($settings['cover'] ?? false) === false || $layout === 'cards') {
-					$settings['srcset'] = $image->srcset($sizes);
-				} else {
-					$settings['srcset'] = $image->srcset([
-						'1x' => [
-							'width'  => $sizes[0],
-							'height' => $sizes[0],
-							'crop'   => 'center'
-						],
-						'2x' => [
-							'width'  => $sizes[1],
-							'height' => $sizes[1],
-							'crop'   => 'center'
-						]
-					]);
-				}
+				// only create srcsets for resizable files
+				$settings['src']    = static::imagePlaceholder();
+				$settings['srcset'] = $this->imageSrcset($image, $layout, $settings);
 			} elseif ($image->isViewable() === true) {
 				$settings['src'] = $image->url();
 			}
 		}
 
-		if (isset($settings['query']) === true) {
-			unset($settings['query']);
-		}
+		unset($settings['query']);
 
 		// resolve remaining options defined as query
 		return A::map($settings, function ($option) {
@@ -197,8 +158,6 @@ abstract class Model
 
 	/**
 	 * Default settings for Panel image
-	 *
-	 * @return array
 	 */
 	protected function imageDefaults(): array
 	{
@@ -206,17 +165,13 @@ abstract class Model
 			'back'  => 'pattern',
 			'color' => 'gray-500',
 			'cover' => false,
-			'icon'  => 'page',
-			'ratio' => '3/2',
+			'icon'  => 'page'
 		];
 	}
 
 	/**
 	 * Data URI placeholder string for Panel image
-	 *
 	 * @internal
-	 *
-	 * @return string
 	 */
 	public static function imagePlaceholder(): string
 	{
@@ -225,20 +180,17 @@ abstract class Model
 
 	/**
 	 * Returns the image file object based on provided query
-	 *
 	 * @internal
-	 *
-	 * @param string|null $query
-	 * @return \Kirby\Cms\File|\Kirby\Filesystem\Asset|null
 	 */
-	protected function imageSource(?string $query = null)
-	{
+	protected function imageSource(
+		string|null $query = null
+	): CmsFile|Asset|null {
 		$image = $this->model->query($query ?? null);
 
 		// validate the query result
 		if (
-			is_a($image, 'Kirby\Cms\File') === true ||
-			is_a($image, 'Kirby\Filesystem\Asset') === true
+			$image instanceof CmsFile ||
+			$image instanceof Asset
 		) {
 			return $image;
 		}
@@ -247,18 +199,84 @@ abstract class Model
 	}
 
 	/**
+	 * Provides the correct srcset string based on
+	 * the layout and settings
+	 * @internal
+	 */
+	protected function imageSrcset(
+		CmsFile|Asset $image,
+		string $layout,
+		array $settings
+	): string|null {
+		// depending on layout type, set different sizes
+		// to have multiple options for the srcset attribute
+		$sizes = match ($layout) {
+			'cards'    => [352, 864, 1408],
+			'cardlets' => [96, 192],
+			default    => [38, 76]
+		};
+
+		// no additional modfications needed if `cover: false`
+		if (($settings['cover'] ?? false) === false) {
+			return $image->srcset($sizes);
+		}
+
+		// for card layouts with `cover: true` provide
+		// crops based on the card ratio
+		if ($layout === 'cards') {
+			$ratio = explode('/', $settings['ratio'] ?? '1/1');
+			$ratio = $ratio[0] / $ratio[1];
+
+			return $image->srcset([
+				$sizes[0] . 'w' => [
+					'width'  => $sizes[0],
+					'height' => round($sizes[0] / $ratio),
+					'crop'   => true
+				],
+				$sizes[1] . 'w' => [
+					'width'  => $sizes[1],
+					'height' => round($sizes[1] / $ratio),
+					'crop'   => true
+				],
+				$sizes[2] . 'w' => [
+					'width'  => $sizes[2],
+					'height' => round($sizes[2] / $ratio),
+					'crop'   => true
+				]
+			]);
+		}
+
+		// for list and cardlets with `cover: true`
+		// provide square crops in two resolutions
+		return $image->srcset([
+			'1x' => [
+				'width'  => $sizes[0],
+				'height' => $sizes[0],
+				'crop'   => true
+			],
+			'2x' => [
+				'width'  => $sizes[1],
+				'height' => $sizes[1],
+				'crop'   => true
+			]
+		]);
+	}
+
+	/**
 	 * Checks for disabled dropdown options according
 	 * to the given permissions
-	 *
-	 * @param string $action
-	 * @param array $options
-	 * @param array $permissions
-	 * @return bool
 	 */
-	public function isDisabledDropdownOption(string $action, array $options, array $permissions): bool
-	{
+	public function isDisabledDropdownOption(
+		string $action,
+		array $options,
+		array $permissions
+	): bool {
 		$option = $options[$action] ?? true;
-		return $permissions[$action] === false || $option === false || $option === 'false';
+
+		return
+			$permissions[$action] === false ||
+			$option === false ||
+			$option === 'false';
 	}
 
 	/**
@@ -267,24 +285,9 @@ abstract class Model
 	 * @return array|false array with lock info,
 	 *                     false if locking is not supported
 	 */
-	public function lock()
+	public function lock(): array|false
 	{
-		if ($lock = $this->model->lock()) {
-			if ($lock->isUnlocked() === true) {
-				return ['state' => 'unlock'];
-			}
-
-			if ($lock->isLocked() === true) {
-				return [
-					'state' => 'lock',
-					'data'  => $lock->get()
-				];
-			}
-
-			return ['state' => null];
-		}
-
-		return false;
+		return $this->model->lock()?->toArray() ?? false;
 	}
 
 	/**
@@ -293,7 +296,6 @@ abstract class Model
 	 * This also checks for the lock status
 	 *
 	 * @param array $unlock An array of options that will be force-unlocked
-	 * @return array
 	 */
 	public function options(array $unlock = []): array
 	{
@@ -314,17 +316,12 @@ abstract class Model
 
 	/**
 	 * Returns the full path without leading slash
-	 *
-	 * @return string
 	 */
 	abstract public function path(): string;
 
 	/**
 	 * Prepares the response data for page pickers
 	 * and page fields
-	 *
-	 * @param array|null $params
-	 * @return array
 	 */
 	public function pickerData(array $params = []): array
 	{
@@ -338,16 +335,14 @@ abstract class Model
 			'link'     => $this->url(true),
 			'sortable' => true,
 			'text'     => $this->model->toSafeString($params['text'] ?? false),
+			'uuid'     => $this->model->uuid()?->toString() ?? $this->model->id(),
 		];
 	}
 
 	/**
 	 * Returns the data array for the
 	 * view's component props
-	 *
 	 * @internal
-	 *
-	 * @return array
 	 */
 	public function props(): array
 	{
@@ -373,41 +368,34 @@ abstract class Model
 	}
 
 	/**
-	 * Returns link url and tooltip
-	 * for model (e.g. used for prev/next
-	 * navigation)
-	 *
+	 * Returns link url and title
+	 * for model (e.g. used for prev/next navigation)
 	 * @internal
-	 *
-	 * @param string $tooltip
-	 * @return array
 	 */
-	public function toLink(string $tooltip = 'title'): array
+	public function toLink(string $title = 'title'): array
 	{
 		return [
 			'link'    => $this->url(true),
-			'tooltip' => (string)$this->model->{$tooltip}()
+			'title'   => $title = (string)$this->model->{$title}()
 		];
 	}
 
 	/**
-	 * Returns link url and tooltip
+	 * Returns link url and title
 	 * for optional sibling model and
 	 * preserves tab selection
 	 *
 	 * @internal
-	 *
-	 * @param \Kirby\Cms\ModelWithContent|null $model
-	 * @param string $tooltip
-	 * @return array
 	 */
-	protected function toPrevNextLink($model = null, string $tooltip = 'title'): ?array
-	{
+	protected function toPrevNextLink(
+		ModelWithContent|null $model = null,
+		string $title = 'title'
+	): array|null {
 		if ($model === null) {
 			return null;
 		}
 
-		$data = $model->panel()->toLink($tooltip);
+		$data = $model->panel()->toLink($title);
 
 		if ($tab = $model->kirby()->request()->get('tab')) {
 			$uri = new Uri($data['link'], [
@@ -425,9 +413,6 @@ abstract class Model
 	 * in the Panel
 	 *
 	 * @internal
-	 *
-	 * @param bool $relative
-	 * @return string
 	 */
 	public function url(bool $relative = false): string
 	{
@@ -443,8 +428,6 @@ abstract class Model
 	 * this model's Panel view
 	 *
 	 * @internal
-	 *
-	 * @return array
 	 */
 	abstract public function view(): array;
 }

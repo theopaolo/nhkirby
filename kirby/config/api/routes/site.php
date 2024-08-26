@@ -5,7 +5,7 @@
  * Site Routes
  */
 return [
-
+	// @codeCoverageIgnoreStart
 	[
 		'pattern' => 'site',
 		'action'  => function () {
@@ -75,30 +75,35 @@ return [
 			$pages = $this
 				->site()
 				->index(true)
-				->filter('isReadable', true);
+				->filter('isListable', true);
 
 			if ($this->requestMethod() === 'GET') {
 				return $pages->search($this->requestQuery('q'));
-			} else {
-				return $pages->query($this->requestBody());
 			}
+
+			return $pages->query($this->requestBody());
+		}
+	],
+	[
+		'pattern' => 'site/fields/(:any)/(:all?)',
+		'method'  => 'ALL',
+		'action'  => function (string $fieldName, string|null $path = null) {
+			return $this->fieldApi($this->site(), $fieldName, $path);
 		}
 	],
 	[
 		'pattern' => 'site/sections/(:any)',
 		'method'  => 'GET',
 		'action'  => function (string $sectionName) {
-			if ($section = $this->site()->blueprint()->section($sectionName)) {
-				return $section->toResponse();
-			}
+			return $this->site()->blueprint()->section($sectionName)?->toResponse();
 		}
 	],
 	[
-		'pattern' => 'site/fields/(:any)/(:all?)',
+		'pattern' => 'site/sections/(:any)/(:all?)',
 		'method'  => 'ALL',
-		'action'  => function (string $fieldName, string $path = null) {
-			return $this->fieldApi($this->site(), $fieldName, $path);
+		'action'  => function (string $sectionName, string|null $path = null) {
+			return $this->sectionApi($this->site(), $sectionName, $path);
 		}
-	]
-
+	],
+	// @codeCoverageIgnoreEnd
 ];

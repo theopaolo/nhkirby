@@ -6,6 +6,7 @@ use Kirby\Exception\InvalidArgumentException;
 use Kirby\Filesystem\Dir;
 use Kirby\Filesystem\F;
 use Kirby\Toolkit\Str;
+use Kirby\Uuid\HasUuids;
 
 /**
  * The `$users` object refers to a collection
@@ -21,14 +22,14 @@ use Kirby\Toolkit\Str;
  */
 class Users extends Collection
 {
+	use HasUuids;
+
 	/**
 	 * All registered users methods
-	 *
-	 * @var array
 	 */
-	public static $methods = [];
+	public static array $methods = [];
 
-	public function create(array $data)
+	public function create(array $data): User
 	{
 		return User::create($data);
 	}
@@ -42,18 +43,21 @@ class Users extends Collection
 	 * @return $this
 	 * @throws \Kirby\Exception\InvalidArgumentException When no `User` or `Users` object or an ID of an existing user is passed
 	 */
-	public function add($object)
+	public function add($object): static
 	{
 		// add a users collection
-		if (is_a($object, self::class) === true) {
+		if ($object instanceof self) {
 			$this->data = array_merge($this->data, $object->data);
 
 		// add a user by id
-		} elseif (is_string($object) === true && $user = App::instance()->user($object)) {
+		} elseif (
+			is_string($object) === true &&
+			$user = App::instance()->user($object)
+		) {
 			$this->__set($user->id(), $user);
 
 		// add a user object
-		} elseif (is_a($object, 'Kirby\Cms\User') === true) {
+		} elseif ($object instanceof User) {
 			$this->__set($object->id(), $object);
 
 		// give a useful error message on invalid input;
@@ -66,13 +70,10 @@ class Users extends Collection
 	}
 
 	/**
-	 * Takes an array of user props and creates a nice and clean user collection from it
-	 *
-	 * @param array $users
-	 * @param array $inject
-	 * @return static
+	 * Takes an array of user props and creates a nice
+	 * and clean user collection from it
 	 */
-	public static function factory(array $users, array $inject = [])
+	public static function factory(array $users, array $inject = []): static
 	{
 		$collection = new static();
 
@@ -86,14 +87,31 @@ class Users extends Collection
 	}
 
 	/**
+	 * Returns all files of all users
+	 */
+	public function files(): Files
+	{
+		$files = new Files([], $this->parent);
+
+		foreach ($this->data as $user) {
+			foreach ($user->files() as $fileKey => $file) {
+				$files->data[$fileKey] = $file;
+			}
+		}
+
+		return $files;
+	}
+
+	/**
 	 * Finds a user in the collection by ID or email address
 	 * @internal Use `$users->find()` instead
-	 *
-	 * @param string $key
-	 * @return \Kirby\Cms\User|null
 	 */
-	public function findByKey(string $key)
+	public function findByKey(string $key): User|null
 	{
+		if ($user = $this->findByUuid($key, 'user')) {
+			return $user;
+		}
+
 		if (Str::contains($key, '@') === true) {
 			return parent::findBy('email', Str::lower($key));
 		}
@@ -103,12 +121,8 @@ class Users extends Collection
 
 	/**
 	 * Loads a user from disk by passing the absolute path (root)
-	 *
-	 * @param string $root
-	 * @param array $inject
-	 * @return static
 	 */
-	public static function load(string $root, array $inject = [])
+	public static function load(string $root, array $inject = []): static
 	{
 		$users = new static();
 
@@ -120,7 +134,7 @@ class Users extends Collection
 			// get role information
 			$path = $root . '/' . $userDirectory . '/index.php';
 			if (is_file($path) === true) {
-				$credentials = F::load($path);
+				$credentials = F::load($path, allowOutput: false);
 			}
 
 			// create user model based on role
@@ -137,11 +151,8 @@ class Users extends Collection
 
 	/**
 	 * Shortcut for `$users->filter('role', 'admin')`
-	 *
-	 * @param string $role
-	 * @return static
 	 */
-	public function role(string $role)
+	public function role(string $role): static
 	{
 		return $this->filter('role', $role);
 	}

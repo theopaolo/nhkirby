@@ -2,10 +2,12 @@
 
 namespace Kirby\Panel;
 
+use Kirby\Http\Response;
+
 /**
  * The Dialog response class handles Fiber
  * requests to render the JSON object for
- * Panel dialogs
+ * Panel dialogs and creates the routes
  * @since 3.6.0
  *
  * @package   Kirby Panel
@@ -16,16 +18,12 @@ namespace Kirby\Panel;
  */
 class Dialog extends Json
 {
-	protected static $key = '$dialog';
+	protected static string $key = '$dialog';
 
 	/**
 	 * Renders dialogs
-	 *
-	 * @param mixed $data
-	 * @param array $options
-	 * @return \Kirby\Http\Response
 	 */
-	public static function response($data, array $options = [])
+	public static function response($data, array $options = []): Response
 	{
 		// interpret true as success
 		if ($data === true) {
@@ -35,5 +33,40 @@ class Dialog extends Json
 		}
 
 		return parent::response($data, $options);
+	}
+
+	/**
+	 * Builds the routes for a dialog
+	 */
+	public static function routes(
+		string $id,
+		string $areaId,
+		string $prefix = '',
+		array $options = []
+	) {
+		$routes = [];
+
+		// create the full pattern with dialogs prefix
+		$pattern = trim($prefix . '/' . ($options['pattern'] ?? $id), '/');
+		$type    = str_replace('$', '', static::$key);
+
+		// load event
+		$routes[] = [
+			'pattern' => $pattern,
+			'type'    => $type,
+			'area'    => $areaId,
+			'action'  => $options['load'] ?? fn () => 'The load handler is missing'
+		];
+
+		// submit event
+		$routes[] = [
+			'pattern' => $pattern,
+			'type'    => $type,
+			'area'    => $areaId,
+			'method'  => 'POST',
+			'action'  => $options['submit'] ?? fn () => 'The submit handler is missing'
+		];
+
+		return $routes;
 	}
 }

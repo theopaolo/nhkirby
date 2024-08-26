@@ -18,25 +18,14 @@ use Kirby\Exception\InvalidArgumentException;
  */
 class PagePicker extends Picker
 {
-	/**
-	 * @var \Kirby\Cms\Pages
-	 */
-	protected $items;
-
-	/**
-	 * @var \Kirby\Cms\Pages
-	 */
-	protected $itemsForQuery;
-
-	/**
-	 * @var \Kirby\Cms\Page|\Kirby\Cms\Site|null
-	 */
-	protected $parent;
+	// TODO: null only due to our Properties setters,
+	// remove once our implementation is better
+	protected Pages|null $items = null;
+	protected Pages|null $itemsForQuery = null;
+	protected Page|Site|null $parent = null;
 
 	/**
 	 * Extends the basic defaults
-	 *
-	 * @return array
 	 */
 	public function defaults(): array
 	{
@@ -55,10 +44,8 @@ class PagePicker extends Picker
 	 * also be any subpage. When a query is given
 	 * and subpage navigation is deactivated,
 	 * there will be no model available at all.
-	 *
-	 * @return \Kirby\Cms\Page|\Kirby\Cms\Site|null
 	 */
-	public function model()
+	public function model(): Page|Site|null
 	{
 		// no subpages navigation = no model
 		if ($this->options['subpages'] === false) {
@@ -77,38 +64,29 @@ class PagePicker extends Picker
 	 * Returns a model object for the given
 	 * query, depending on the parent and subpages
 	 * options.
-	 *
-	 * @return \Kirby\Cms\Page|\Kirby\Cms\Site|null
 	 */
-	public function modelForQuery()
+	public function modelForQuery(): Page|Site|null
 	{
 		if ($this->options['subpages'] === true && empty($this->options['parent']) === false) {
 			return $this->parent();
 		}
 
-		if ($items = $this->items()) {
-			return $items->parent();
-		}
-
-		return null;
+		return $this->items()?->parent();
 	}
 
 	/**
 	 * Returns basic information about the
 	 * parent model that is currently selected
 	 * in the page picker.
-	 *
-	 * @param \Kirby\Cms\Site|\Kirby\Cms\Page|null
-	 * @return array|null
 	 */
-	public function modelToArray($model = null): ?array
+	public function modelToArray(Page|Site $model = null): array|null
 	{
 		if ($model === null) {
 			return null;
 		}
 
 		// the selected model is the site. there's nothing above
-		if (is_a($model, 'Kirby\Cms\Site') === true) {
+		if ($model instanceof Site) {
 			return [
 				'id'     => null,
 				'parent' => null,
@@ -136,10 +114,8 @@ class PagePicker extends Picker
 
 	/**
 	 * Search all pages for the picker
-	 *
-	 * @return \Kirby\Cms\Pages|null
 	 */
-	public function items()
+	public function items(): Pages|null
 	{
 		// cache
 		if ($this->items !== null) {
@@ -161,8 +137,8 @@ class PagePicker extends Picker
 			$items = $this->itemsForQuery();
 		}
 
-		// filter protected pages
-		$items = $items->filter('isReadable', true);
+		// filter protected and hidden pages
+		$items = $items->filter('isListable', true);
 
 		// search
 		$items = $this->search($items);
@@ -173,10 +149,8 @@ class PagePicker extends Picker
 
 	/**
 	 * Search for pages by parent
-	 *
-	 * @return \Kirby\Cms\Pages
 	 */
-	public function itemsForParent()
+	public function itemsForParent(): Pages
 	{
 		return $this->parent()->children();
 	}
@@ -184,10 +158,9 @@ class PagePicker extends Picker
 	/**
 	 * Search for pages by query string
 	 *
-	 * @return \Kirby\Cms\Pages
 	 * @throws \Kirby\Exception\InvalidArgumentException
 	 */
-	public function itemsForQuery()
+	public function itemsForQuery(): Pages
 	{
 		// cache
 		if ($this->itemsForQuery !== null) {
@@ -200,13 +173,13 @@ class PagePicker extends Picker
 		// help mitigate some typical query usage issues
 		// by converting site and page objects to proper
 		// pages by returning their children
-		if (is_a($items, 'Kirby\Cms\Site') === true) {
-			$items = $items->children();
-		} elseif (is_a($items, 'Kirby\Cms\Page') === true) {
-			$items = $items->children();
-		} elseif (is_a($items, 'Kirby\Cms\Pages') === false) {
-			throw new InvalidArgumentException('Your query must return a set of pages');
-		}
+		$items = match (true) {
+			$items instanceof Site,
+			$items instanceof Page  => $items->children(),
+			$items instanceof Pages => $items,
+
+			default => throw new InvalidArgumentException('Your query must return a set of pages')
+		};
 
 		return $this->itemsForQuery = $items;
 	}
@@ -216,33 +189,21 @@ class PagePicker extends Picker
 	 * The model will be used to fetch
 	 * subpages unless there's a specific
 	 * query to find pages instead.
-	 *
-	 * @return \Kirby\Cms\Page|\Kirby\Cms\Site
 	 */
-	public function parent()
+	public function parent(): Page|Site
 	{
-		if ($this->parent !== null) {
-			return $this->parent;
-		}
-
-		return $this->parent = $this->kirby->page($this->options['parent']) ?? $this->site;
+		return $this->parent ??= $this->kirby->page($this->options['parent']) ?? $this->site;
 	}
 
 	/**
 	 * Calculates the top-most model (page or site)
 	 * that can be accessed when navigating
 	 * through pages.
-	 *
-	 * @return \Kirby\Cms\Page|\Kirby\Cms\Site
 	 */
-	public function start()
+	public function start(): Page|Site
 	{
 		if (empty($this->options['query']) === false) {
-			if ($items = $this->itemsForQuery()) {
-				return $items->parent();
-			}
-
-			return $this->site;
+			return $this->itemsForQuery()?->parent() ?? $this->site;
 		}
 
 		return $this->site;
@@ -252,8 +213,6 @@ class PagePicker extends Picker
 	 * Returns an associative array
 	 * with all information for the picker.
 	 * This will be passed directly to the API.
-	 *
-	 * @return array
 	 */
 	public function toArray(): array
 	{

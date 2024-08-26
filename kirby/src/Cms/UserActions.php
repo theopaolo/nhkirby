@@ -4,13 +4,16 @@ namespace Kirby\Cms;
 
 use Closure;
 use Kirby\Data\Data;
+use Kirby\Data\Json;
 use Kirby\Exception\LogicException;
 use Kirby\Exception\PermissionException;
 use Kirby\Filesystem\Dir;
 use Kirby\Filesystem\F;
 use Kirby\Form\Form;
 use Kirby\Http\Idn;
+use Kirby\Toolkit\A;
 use Kirby\Toolkit\Str;
+use SensitiveParameter;
 use Throwable;
 
 /**
@@ -26,11 +29,8 @@ trait UserActions
 {
 	/**
 	 * Changes the user email address
-	 *
-	 * @param string $email
-	 * @return static
 	 */
-	public function changeEmail(string $email)
+	public function changeEmail(string $email): static
 	{
 		$email = trim($email);
 
@@ -52,11 +52,8 @@ trait UserActions
 
 	/**
 	 * Changes the user language
-	 *
-	 * @param string $language
-	 * @return static
 	 */
-	public function changeLanguage(string $language)
+	public function changeLanguage(string $language): static
 	{
 		return $this->commit('changeLanguage', ['user' => $this, 'language' => $language], function ($user, $language) {
 			$user = $user->clone([
@@ -76,11 +73,8 @@ trait UserActions
 
 	/**
 	 * Changes the screen name of the user
-	 *
-	 * @param string $name
-	 * @return static
 	 */
-	public function changeName(string $name)
+	public function changeName(string $name): static
 	{
 		$name = trim($name);
 
@@ -102,12 +96,11 @@ trait UserActions
 
 	/**
 	 * Changes the user password
-	 *
-	 * @param string $password
-	 * @return static
 	 */
-	public function changePassword(string $password)
-	{
+	public function changePassword(
+		#[SensitiveParameter]
+		string $password
+	): static {
 		return $this->commit('changePassword', ['user' => $this, 'password' => $password], function ($user, $password) {
 			$user = $user->clone([
 				'password' => $password = User::hashPassword($password)
@@ -118,17 +111,21 @@ trait UserActions
 			// update the users collection
 			$user->kirby()->users()->set($user->id(), $user);
 
+			// keep the user logged in to the current browser
+			// if they changed their own password
+			// (regenerate the session token, update the login timestamp)
+			if ($user->isLoggedIn() === true) {
+				$user->loginPasswordless();
+			}
+
 			return $user;
 		});
 	}
 
 	/**
 	 * Changes the user role
-	 *
-	 * @param string $role
-	 * @return static
 	 */
-	public function changeRole(string $role)
+	public function changeRole(string $role): static
 	{
 		return $this->commit('changeRole', ['user' => $this, 'role' => $role], function ($user, $role) {
 			$user = $user->clone([
@@ -147,6 +144,28 @@ trait UserActions
 	}
 
 	/**
+	 * Changes the user's TOTP secret
+	 * @since 4.0.0
+	 */
+	public function changeTotp(
+		#[SensitiveParameter]
+		string|null $secret
+	): static {
+		return $this->commit('changeTotp', ['user' => $this, 'secret' => $secret], function ($user, $secret) {
+			$this->writeSecret('totp', $secret);
+
+			// keep the user logged in to the current browser
+			// if they changed their own TOTP secret
+			// (regenerate the session token, update the login timestamp)
+			if ($user->isLoggedIn() === true) {
+				$user->loginPasswordless();
+			}
+
+			return $user;
+		});
+	}
+
+	/**
 	 * Commits a user action, by following these steps
 	 *
 	 * 1. checks the action rules
@@ -155,14 +174,13 @@ trait UserActions
 	 * 4. sends the after hook
 	 * 5. returns the result
 	 *
-	 * @param string $action
-	 * @param array $arguments
-	 * @param \Closure $callback
-	 * @return mixed
 	 * @throws \Kirby\Exception\PermissionException
 	 */
-	protected function commit(string $action, array $arguments, Closure $callback)
-	{
+	protected function commit(
+		string $action,
+		array $arguments,
+		Closure $callback
+	): mixed {
 		if ($this->isKirby() === true) {
 			throw new PermissionException('The Kirby user cannot be changed');
 		}
@@ -176,13 +194,12 @@ trait UserActions
 
 		$result = $callback(...$argumentValues);
 
-		if ($action === 'create') {
-			$argumentsAfter = ['user' => $result];
-		} elseif ($action === 'delete') {
-			$argumentsAfter = ['status' => $result, 'user' => $old];
-		} else {
-			$argumentsAfter = ['newUser' => $result, 'oldUser' => $old];
-		}
+		$argumentsAfter = match ($action) {
+			'create' => ['user' => $result],
+			'delete' => ['status' => $result, 'user' => $old],
+			default  => ['newUser' => $result, 'oldUser' => $old]
+		};
+
 		$kirby->trigger('user.' . $action . ':after', $argumentsAfter);
 
 		$kirby->cache('pages')->flush();
@@ -191,11 +208,8 @@ trait UserActions
 
 	/**
 	 * Creates a new User from the given props and returns a new User object
-	 *
-	 * @param array|null $props
-	 * @return static
 	 */
-	public static function create(array $props = null)
+	public static function create(array $props = null): User
 	{
 		$data = $props;
 
@@ -247,8 +261,6 @@ trait UserActions
 
 	/**
 	 * Returns a random user id
-	 *
-	 * @return string
 	 */
 	public function createId(): string
 	{
@@ -263,7 +275,7 @@ trait UserActions
 
 				// we can't really test for a random match
 				// @codeCoverageIgnoreStart
-			} catch (Throwable $e) {
+			} catch (Throwable) {
 				$length++;
 			}
 		} while (true);
@@ -273,7 +285,6 @@ trait UserActions
 	/**
 	 * Deletes the user
 	 *
-	 * @return bool
 	 * @throws \Kirby\Exception\LogicException
 	 */
 	public function delete(): bool
@@ -300,42 +311,63 @@ trait UserActions
 
 	/**
 	 * Read the account information from disk
-	 *
-	 * @return array
 	 */
 	protected function readCredentials(): array
 	{
 		$path = $this->root() . '/index.php';
 
 		if (is_file($path) === true) {
-			$credentials = F::load($path);
+			$credentials = F::load($path, allowOutput: false);
 
 			return is_array($credentials) === false ? [] : $credentials;
-		} else {
-			return [];
 		}
+
+		return [];
 	}
 
 	/**
 	 * Reads the user password from disk
-	 *
-	 * @return string|false
 	 */
-	protected function readPassword()
+	protected function readPassword(): string|false
 	{
-		return F::read($this->root() . '/.htpasswd');
+		return $this->secret('password') ?? false;
+	}
+
+	/**
+	 * Reads the secrets from the user secrets file on disk
+	 * @since 4.0.0
+	 */
+	protected function readSecrets(): array
+	{
+		$file    = $this->secretsFile();
+		$secrets = [];
+
+		if (is_file($file) === true) {
+			$lines = explode("\n", file_get_contents($file));
+
+			if (isset($lines[1]) === true) {
+				$secrets = Json::decode($lines[1]);
+			}
+
+			$secrets['password'] = $lines[0];
+		}
+
+		// an empty password hash means that no password was set
+		if (($secrets['password'] ?? null) === '') {
+			unset($secrets['password']);
+		}
+
+		return $secrets;
 	}
 
 	/**
 	 * Updates the user data
-	 *
-	 * @param array|null $input
-	 * @param string|null $languageCode
-	 * @param bool $validate
-	 * @return static
 	 */
-	public function update(array $input = null, string $languageCode = null, bool $validate = false)
-	{
+	public function update(
+		array $input = null,
+		string $languageCode = null,
+		bool $validate = false
+	): static {
 		$user = parent::update($input, $languageCode, $validate);
 
 		// set auth user data only if the current user is this user
@@ -352,9 +384,6 @@ trait UserActions
 	/**
 	 * This always merges the existing credentials
 	 * with the given input.
-	 *
-	 * @param array $credentials
-	 * @return bool
 	 */
 	protected function updateCredentials(array $credentials): bool
 	{
@@ -368,9 +397,6 @@ trait UserActions
 
 	/**
 	 * Writes the account information to disk
-	 *
-	 * @param array $credentials
-	 * @return bool
 	 */
 	protected function writeCredentials(array $credentials): bool
 	{
@@ -379,12 +405,44 @@ trait UserActions
 
 	/**
 	 * Writes the password to disk
-	 *
-	 * @param string|null $password
-	 * @return bool
 	 */
-	protected function writePassword(string $password = null): bool
-	{
-		return F::write($this->root() . '/.htpasswd', $password);
+	protected function writePassword(
+		#[SensitiveParameter]
+		string $password = null
+	): bool {
+		return $this->writeSecret('password', $password);
+	}
+
+	/**
+	 * Writes a specific secret to the user secrets file on disk;
+	 * `password` is the first line, the rest is stored as JSON
+	 * @since 4.0.0
+	 */
+	protected function writeSecret(
+		string $key,
+		#[SensitiveParameter]
+		mixed $secret
+	): bool {
+		$secrets = $this->readSecrets();
+
+		if ($secret === null) {
+			unset($secrets[$key]);
+		} else {
+			$secrets[$key] = $secret;
+		}
+
+		// first line is always the password
+		$lines = $secrets['password'] ?? '';
+
+		// everything else is for the second line
+		$secondLine = Json::encode(
+			A::without($secrets, 'password')
+		);
+
+		if ($secondLine !== '[]') {
+			$lines .= "\n" . $secondLine;
+		}
+
+		return F::write($this->secretsFile(), $lines);
 	}
 }

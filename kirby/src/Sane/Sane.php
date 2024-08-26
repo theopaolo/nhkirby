@@ -23,10 +23,8 @@ class Sane
 {
 	/**
 	 * Handler Type Aliases
-	 *
-	 * @var array
 	 */
-	public static $aliases = [
+	public static array $aliases = [
 		'application/xml' => 'xml',
 		'image/svg'       => 'svg',
 		'image/svg+xml'   => 'svg',
@@ -36,34 +34,34 @@ class Sane
 
 	/**
 	 * All registered handlers
-	 *
-	 * @var array
 	 */
-	public static $handlers = [
-		'html' => 'Kirby\Sane\Html',
-		'svg'  => 'Kirby\Sane\Svg',
-		'svgz' => 'Kirby\Sane\Svgz',
-		'xml'  => 'Kirby\Sane\Xml',
+	public static array $handlers = [
+		'html' => Html::class,
+		'svg'  => Svg::class,
+		'svgz' => Svgz::class,
+		'xml'  => Xml::class,
 	];
 
 	/**
 	 * Handler getter
 	 *
-	 * @param string $type
 	 * @param bool $lazy If set to `true`, `null` is returned for undefined handlers
-	 * @return \Kirby\Sane\Handler|null
 	 *
 	 * @throws \Kirby\Exception\NotFoundException If no handler was found and `$lazy` was set to `false`
 	 */
-	public static function handler(string $type, bool $lazy = false)
-	{
+	public static function handler(
+		string $type,
+		bool $lazy = false
+	): Handler|null {
 		// normalize the type
 		$type = mb_strtolower($type);
 
 		// find a handler or alias
-		$handler = static::$handlers[$type] ??
-				   static::$handlers[static::$aliases[$type] ?? null] ??
-				   null;
+		$handler = static::$handlers[$type] ?? null;
+
+		if ($alias = static::$aliases[$type] ?? null) {
+			$handler ??= static::$handlers[$alias] ?? null;
+		}
 
 		if (empty($handler) === false && class_exists($handler) === true) {
 			return new $handler();
@@ -80,13 +78,12 @@ class Sane
 	 * Sanitizes the given string with the specified handler
 	 * @since 3.6.0
 	 *
-	 * @param string $string
-	 * @param string $type
-	 * @return string
+	 * @param bool $isExternal Whether the string is from an external file
+	 *                         that may be accessed directly
 	 */
-	public static function sanitize(string $string, string $type): string
+	public static function sanitize(string $string, string $type, bool $isExternal = false): string
 	{
-		return static::handler($type)->sanitize($string);
+		return static::handler($type)->sanitize($string, $isExternal);
 	}
 
 	/**
@@ -96,19 +93,19 @@ class Sane
 	 * the extension and MIME type if not specified
 	 * @since 3.6.0
 	 *
-	 * @param string $file
 	 * @param string|bool $typeLazy Explicit handler type string,
 	 *                              `true` for lazy autodetection or
 	 *                              `false` for normal autodetection
-	 * @return void
 	 *
 	 * @throws \Kirby\Exception\InvalidArgumentException If the file didn't pass validation
 	 * @throws \Kirby\Exception\LogicException If more than one handler applies
 	 * @throws \Kirby\Exception\NotFoundException If the handler was not found
 	 * @throws \Kirby\Exception\Exception On other errors
 	 */
-	public static function sanitizeFile(string $file, $typeLazy = false): void
-	{
+	public static function sanitizeFile(
+		string $file,
+		string|bool $typeLazy = false
+	): void {
 		if (is_string($typeLazy) === true) {
 			static::handler($typeLazy)->sanitizeFile($file);
 			return;
@@ -137,17 +134,16 @@ class Sane
 	/**
 	 * Validates file contents with the specified handler
 	 *
-	 * @param string $string
-	 * @param string $type
-	 * @return void
+	 * @param bool $isExternal Whether the string is from an external file
+	 *                         that may be accessed directly
 	 *
 	 * @throws \Kirby\Exception\InvalidArgumentException If the file didn't pass validation
 	 * @throws \Kirby\Exception\NotFoundException If the handler was not found
 	 * @throws \Kirby\Exception\Exception On other errors
 	 */
-	public static function validate(string $string, string $type): void
+	public static function validate(string $string, string $type, bool $isExternal = false): void
 	{
-		static::handler($type)->validate($string);
+		static::handler($type)->validate($string, $isExternal);
 	}
 
 	/**
@@ -155,24 +151,26 @@ class Sane
 	 * the sane handlers are automatically chosen by
 	 * the extension and MIME type if not specified
 	 *
-	 * @param string $file
 	 * @param string|bool $typeLazy Explicit handler type string,
 	 *                              `true` for lazy autodetection or
 	 *                              `false` for normal autodetection
-	 * @return void
 	 *
 	 * @throws \Kirby\Exception\InvalidArgumentException If the file didn't pass validation
 	 * @throws \Kirby\Exception\NotFoundException If the handler was not found
 	 * @throws \Kirby\Exception\Exception On other errors
 	 */
-	public static function validateFile(string $file, $typeLazy = false): void
-	{
+	public static function validateFile(
+		string $file,
+		string|bool $typeLazy = false
+	): void {
 		if (is_string($typeLazy) === true) {
 			static::handler($typeLazy)->validateFile($file);
 			return;
 		}
 
-		foreach (static::handlersForFile($file, $typeLazy === true) as $handler) {
+		$handlers = static::handlersForFile($file, $typeLazy === true);
+
+		foreach ($handlers as $handler) {
 			$handler->validateFile($file);
 		}
 	}
@@ -181,12 +179,13 @@ class Sane
 	 * Returns all handler objects that apply to the given file based on
 	 * file extension and MIME type
 	 *
-	 * @param string $file
 	 * @param bool $lazy If set to `true`, undefined handlers are skipped
 	 * @return array<\Kirby\Sane\Handler>
 	 */
-	protected static function handlersForFile(string $file, bool $lazy = false): array
-	{
+	protected static function handlersForFile(
+		string $file,
+		bool $lazy = false
+	): array {
 		$handlers = $handlerClasses = [];
 
 		// all values that can be used for the handler search;
@@ -198,7 +197,10 @@ class Sane
 			$handlerClass = $handler ? get_class($handler) : null;
 
 			// ensure that each handler class is only returned once
-			if ($handler && in_array($handlerClass, $handlerClasses) === false) {
+			if (
+				$handler &&
+				in_array($handlerClass, $handlerClasses) === false
+			) {
 				$handlers[]       = $handler;
 				$handlerClasses[] = $handlerClass;
 			}

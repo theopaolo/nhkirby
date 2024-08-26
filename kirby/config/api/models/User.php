@@ -9,7 +9,7 @@ use Kirby\Form\Form;
 return [
 	'default' => fn () => $this->user(),
 	'fields' => [
-		'avatar'      => fn (User $user) => $user->avatar() ? $user->avatar()->crop(512) : null,
+		'avatar'      => fn (User $user) => $user->avatar()?->crop(512),
 		'blueprint'   => fn (User $user) => $user->blueprint(),
 		'content'     => fn (User $user) => Form::for($user)->values(),
 		'email'       => fn (User $user) => $user->email(),
@@ -24,9 +24,10 @@ return [
 		'prev'        => fn (User $user) => $user->prev(),
 		'role'        => fn (User $user) => $user->role(),
 		'roles'       => fn (User $user) => $user->roles(),
-		'username'    => fn (User $user) => $user->username()
+		'username'    => fn (User $user) => $user->username(),
+		'uuid'        => fn (User $user) => $user->uuid()?->toString()
 	],
-	'type'  => 'Kirby\Cms\User',
+	'type'  => User::class,
 	'views' => [
 		'default' => [
 			'avatar',
@@ -39,7 +40,8 @@ return [
 			'options',
 			'prev' => 'compact',
 			'role',
-			'username'
+			'username',
+			'uuid'
 		],
 		'compact' => [
 			'avatar' => 'compact',
@@ -48,7 +50,8 @@ return [
 			'language',
 			'name',
 			'role' => 'compact',
-			'username'
+			'username',
+			'uuid'
 		],
 		'auth' => [
 			'avatar' => 'compact',
@@ -72,6 +75,7 @@ return [
 			'prev' => ['id', 'name'],
 			'role',
 			'username',
+			'uuid'
 		],
 	]
 ];

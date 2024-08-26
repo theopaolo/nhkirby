@@ -4,9 +4,9 @@ namespace Kirby\Form\Mixin;
 
 trait Min
 {
-	protected $min;
+	protected int|null $min;
 
-	public function min(): ?int
+	public function min(): int|null
 	{
 		return $this->min;
 	}

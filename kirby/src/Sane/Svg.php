@@ -33,20 +33,16 @@ class Svg extends Xml
 
 	/**
 	 * Global list of allowed attribute prefixes
-	 *
-	 * @var array
 	 */
-	public static $allowedAttrPrefixes = [
+	public static array $allowedAttrPrefixes = [
 		'aria-',
 		'data-',
 	];
 
 	/**
 	 * Global list of allowed attributes
-	 *
-	 * @var array
 	 */
-	public static $allowedAttrs = [
+	public static array $allowedAttrs = [
 		// core attributes
 		'id',
 		'lang',
@@ -267,11 +263,16 @@ class Svg extends Xml
 	];
 
 	/**
-	 * Associative array of all allowed namespace URIs
+	 * Allowed hostnames for HTTP(S) URLs
 	 *
-	 * @var array
+	 * @var array|true
 	 */
-	public static $allowedNamespaces = [
+	public static array|bool $allowedDomains = [];
+
+	/**
+	 * Associative array of all allowed namespace URIs
+	 */
+	public static array $allowedNamespaces = [
 		''      => 'http://www.w3.org/2000/svg',
 		'xlink' => 'http://www.w3.org/1999/xlink'
 	];
@@ -282,10 +283,8 @@ class Svg extends Xml
 	 * for this tag, `true` to allow any attribute from the
 	 * `allowedAttrs` list or `false` to allow the tag without
 	 * any attributes
-	 *
-	 * @var array
 	 */
-	public static $allowedTags = [
+	public static array $allowedTags = [
 		'a' => true,
 		'altGlyph' => true,
 		'altGlyphDef' => true,
@@ -360,10 +359,8 @@ class Svg extends Xml
 	 *
 	 * IMPORTANT: Use lower-case names here because
 	 * of the case-insensitive matching
-	 *
-	 * @var array
 	 */
-	public static $disallowedTags = [
+	public static array $disallowedTags = [
 		'animate',
 		'color-profile',
 		'cursor',
@@ -393,10 +390,9 @@ class Svg extends Xml
 	 * Custom callback for additional attribute sanitization
 	 * @internal
 	 *
-	 * @param \DOMAttr $attr
 	 * @return array Array with exception objects for each modification
 	 */
-	public static function sanitizeAttr(DOMAttr $attr): array
+	public static function sanitizeAttr(DOMAttr $attr, array $options): array
 	{
 		$element = $attr->ownerElement;
 		$name    = $attr->name;
@@ -410,12 +406,13 @@ class Svg extends Xml
 			Str::startsWith($value, '#') === true
 		) {
 			// find the target (used element)
-			$id = str_replace('"', '', mb_substr($value, 1));
-			$target = (new DOMXPath($attr->ownerDocument))->query('//*[@id="' . $id . '"]')->item(0);
+			$id     = str_replace('"', '', mb_substr($value, 1));
+			$path   = new DOMXPath($attr->ownerDocument);
+			$target = $path->query('//*[@id="' . $id . '"]')->item(0);
 
 			// the target must not contain any other <use> elements
 			if (
-				is_a($target, 'DOMElement') === true &&
+				$target instanceof DOMElement &&
 				$target->getElementsByTagName('use')->count() > 0
 			) {
 				$errors[] = new InvalidArgumentException(
@@ -433,17 +430,16 @@ class Svg extends Xml
 	 * Custom callback for additional element sanitization
 	 * @internal
 	 *
-	 * @param \DOMElement $element
 	 * @return array Array with exception objects for each modification
 	 */
-	public static function sanitizeElement(DOMElement $element): array
+	public static function sanitizeElement(DOMElement $element, array $options): array
 	{
 		$errors = [];
 
 		// check for URLs inside <style> elements
 		if ($element->tagName === 'style') {
 			foreach (Dom::extractUrls($element->textContent) as $url) {
-				if (Dom::isAllowedUrl($url, static::options()) !== true) {
+				if (Dom::isAllowedUrl($url, $options) !== true) {
 					$errors[] = new InvalidArgumentException(
 						'The URL is not allowed in the "style" element' .
 						' (around line ' . $element->getLineNo() . ')'
@@ -459,11 +455,8 @@ class Svg extends Xml
 	/**
 	 * Custom callback for additional doctype validation
 	 * @internal
-	 *
-	 * @param \DOMDocumentType $doctype
-	 * @return void
 	 */
-	public static function validateDoctype(DOMDocumentType $doctype): void
+	public static function validateDoctype(DOMDocumentType $doctype, array $options): void
 	{
 		if (mb_strtolower($doctype->name) !== 'svg') {
 			throw new InvalidArgumentException('Invalid doctype');
@@ -473,11 +466,12 @@ class Svg extends Xml
 	/**
 	 * Returns the sanitization options for the handler
 	 *
-	 * @return array
+	 * @param bool $isExternal Whether the string is from an external file
+	 *                         that may be accessed directly
 	 */
-	protected static function options(): array
+	protected static function options(bool $isExternal): array
 	{
-		return array_merge(parent::options(), [
+		return array_merge(parent::options($isExternal), [
 			'allowedAttrPrefixes' => static::$allowedAttrPrefixes,
 			'allowedAttrs'        => static::$allowedAttrs,
 			'allowedNamespaces'   => static::$allowedNamespaces,
@@ -489,17 +483,15 @@ class Svg extends Xml
 	/**
 	 * Parses the given string into a `Toolkit\Dom` object
 	 *
-	 * @param string $string
-	 * @return \Kirby\Toolkit\Dom
-	 *
 	 * @throws \Kirby\Exception\InvalidArgumentException If the file couldn't be parsed
 	 */
-	protected static function parse(string $string)
+	protected static function parse(string $string): Dom
 	{
 		$svg = parent::parse($string);
 
 		// basic validation before we continue sanitizing/validating
 		$rootName = $svg->document()->documentElement->nodeName;
+
 		if ($rootName !== 'svg') {
 			throw new InvalidArgumentException('The file is not a SVG (got <' . $rootName . '>)');
 		}
