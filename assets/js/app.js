@@ -4,9 +4,14 @@ import Swup from 'swup';
 import { initScripts } from './scriptManager';
 import { initSwup } from './swupManager';
 import { initMouseHandler } from './modules/mouseHandler.js';
-import { initLightboxHandler } from './modules/lightboxHandler.js';
-import { initControls } from './modules/controlsManager.js';
+// import { initLightboxHandler } from './modules/lightboxHandler.js';
+import { initLightboxHandlers } from './modules/videoLightboxHandler.js';
 
+import { initControls } from './modules/controlsManager.js';
+import { initializeStarrySky } from './starrySky.js';
+
+const starsCanvas = document.getElementById('starry-sky');
+initializeStarrySky(starsCanvas);
 // Constants
 const gsap = window.gsap;
 const INITIAL_CAMERA_POSITION = { x: 55, y: 0, z: 0 };
@@ -16,7 +21,7 @@ const GOLDEN_NUM = 1.618033988749895;
 // Scene Setup
 const canvas = document.querySelector('canvas.webgl');
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0d0d0d);
+scene.background = null;
 
 const camera = initCamera();
 scene.add(camera);
@@ -29,17 +34,16 @@ const SHARED_MATERIAL = new THREE.MeshBasicMaterial({ transparent: false, side: 
 // Groups and Arrays
 const IMG_GROUP = new THREE.Group();
 const IMG_OBJECTS = [];
+const videoMeshes = [];
 
 // DOM Elements
 const DOM_VERTICALS_IMAGES = document.querySelectorAll(".imgverticales span");
 const DOM_HORIZONTALES_IMAGES = document.querySelectorAll(".imghorizontales span");
 const DOM_VIDEOS = document.querySelectorAll('.video-sphere');
-const videos = [];
 const verticales = [];
 const horizontales = [];
 DOM_VERTICALS_IMAGES.forEach(imgSrc => verticales.push(imgSrc.dataset.imgurl));
 DOM_HORIZONTALES_IMAGES.forEach(imgSrc => horizontales.push(imgSrc.dataset.imgurl));
-DOM_VIDEOS.forEach(videoSrc => videos.push(videoSrc.src))
 
 // Initialization Functions
 function initCamera() {
@@ -49,10 +53,10 @@ function initCamera() {
 }
 
 function initRenderer(canvas) {
-    const renderer = new THREE.WebGLRenderer({ canvas });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    return renderer;
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true }); // Enable alpha for transparency
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  return renderer;
 }
 
 function initOverlay() {
@@ -139,20 +143,25 @@ function fiboSphere(imgLght, iter, mesh, size) {
 // Video Sphere Function (Commented Out)
 function vidSphere(videoArray){
     let y = 0;
-    let imgLght = videoArray.length;
+    let videoLght = videoArray.length;
 
     for(let video of videoArray){
-        video.play();
-        let vidTexture = new THREE.VideoTexture(video);
+        video.play();  // Start playing the video
+        let vidTexture = new THREE.VideoTexture(video);  // Create video texture
         let planeMaterial = new THREE.MeshBasicMaterial({ map: vidTexture });
         planeMaterial.side = THREE.DoubleSide;
-        let planeMesh = new THREE.Mesh(PLANE_GEOMETRY_HORIZONTAL, planeMaterial);
+        let planeMesh = new THREE.Mesh(PLANE_GEOMETRY_HORIZONTAL, planeMaterial);  // Create a mesh for the video
 
         y += 1;
+        fiboSphere(videoLght, y, planeMesh, 6);  // Position the video mesh in the scene
 
-        fiboSphere(imgLght, y, planeMesh, 6);
+        videoMeshes.push(planeMesh);  // Add the planeMesh to the videoMeshes array
     }
+
+    scene.add(...videoMeshes);  // Add the video meshes to the scene
 }
+
+vidSphere(DOM_VIDEOS);
 
 // Event Handlers
 function handleExploreButtonClick() {
@@ -255,9 +264,8 @@ const randomRange = (min, max) => Math.random() * (max - min) + min;
 function zoomIn() {
     const randomPos = () => randomRange(0, 5);
     gsap.timeline()
-        .fromTo(camera.position, { x: 900, y: 500, z: 0 }, { x: 55, y: 0, z: 0, duration: 2, ease: "power3.inOut" })
-        .to(camera.position, { x: randomPos(), y: 0, z: 0, duration: 3, ease: "power3.inOut" })
-        .to(camera.position, { x: 55, y: 0, z: 0, duration: 2, ease: "power3.inOut" });
+        .fromTo(camera.position, { x: 15, y: -20, z: 10 }, { x: 55, y: 0, z: 0, duration: 4, ease: "power3.inOut" });
+        // .to(camera.position, { x: 55, y: 0, z: 0, duration: 2, ease: "power3.inOut" });
 }
 
 function removeOverlay() {
@@ -277,11 +285,13 @@ const overlay = initOverlay();
 scene.add(overlay);
 
 const trackballControls = initControls(camera, canvas);
-const { updateIntersect, getCurrentIntersect } = initMouseHandler(canvas, camera, IMG_OBJECTS);
+const { updateIntersect, getCurrentIntersect } = initMouseHandler(canvas, camera, IMG_OBJECTS, videoMeshes);
 
 // Initialize lightbox handler
 const lightbox = document.querySelector('.lightbox');
-initLightboxHandler(lightbox, IMG_OBJECTS, canvas, getCurrentIntersect);
+// initLightboxHandler(lightbox, IMG_OBJECTS, canvas, getCurrentIntersect);
+// Example in your main app:
+initLightboxHandlers(lightbox, IMG_OBJECTS, videoMeshes, DOM_VIDEOS, canvas, getCurrentIntersect);
 
 const renderer = initRenderer(canvas);
 

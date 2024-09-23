@@ -16,13 +16,12 @@ fields:
     type: text
     icon: title
 
-
-  bgcolor:
-    label: Fond sombre
-    type: toggle
-    text:
-      - "non"
-      - "oui"
+  # bgcolor:
+  #   label: Fond sombre
+  #   type: toggle
+  #   text:
+  #     - "non"
+  #     - "oui"
 
   gridcol:
     label: Grille 2 colones ?

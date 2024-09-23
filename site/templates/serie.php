@@ -24,6 +24,7 @@
 
         <div class="next-prev">
           <a class="prev" ></a>
+          <span class="nav-sep"></span>
           <a class="next" ></a>
         </div>
 
@@ -34,7 +35,7 @@
                 $seriegridclass = 'serie-grid';
             }
           ?>
-          <section class="slides bg-light <?= $layout->attrs()->presentation() ?> <?= $seriegridclass ?>">
+          <section class="slides bg-light <?php if($isdark === true){ echo "bg-dark"; }?> <?= $layout->attrs()->presentation() ?> <?= $seriegridclass ?>">
             <?php foreach($layout->columns() as $column):?>
               <?php foreach ($column->blocks() as $block): ?>
                 <div class="column <?= $block->position() ?> <?php if($block->gridcol()->toBool() === true){ echo "grid-col-2"; }?> <?php if($fullheigt === true){ echo "full-height"; }?>"">

@@ -14,7 +14,8 @@
     </li>
   </ul>
   <span class="nav-center"></span>
-  <ul style="justify-self: baseline;">
-    <li><a href="<?= $site->page("about")->url()?>"><?= $site->page("about")->title()?></a> </li>
+  <ul class="flex" style="justify-self: baseline;">
+    <li><a href="<?= $site->page("about")->url()?>"><?= $site->page("about")->title()?></a></li>
+    <li><a href="<?= $site->url() ?>?lang=en">EN</a> | <a href="<?= $site->url() ?>?lang=fr"> FR </a></li>
   </ul>
 </nav>

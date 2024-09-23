@@ -1,7 +1,6 @@
-// mouseHandler.js
 import * as THREE from 'three';
 
-export function initMouseHandler(canvas, camera, imgObjects) {
+export function initMouseHandler(canvas, camera, imgObjects, videoObjects) {
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
     let currentIntersect = null;
@@ -32,7 +31,10 @@ export function initMouseHandler(canvas, camera, imgObjects) {
 
     const updateIntersect = () => {
         raycaster.setFromCamera(mouse, camera);
-        const intersects = raycaster.intersectObjects(imgObjects);
+
+        // Combine both image and video objects for raycasting
+        const allObjects = [...imgObjects, ...videoObjects];
+        const intersects = raycaster.intersectObjects(allObjects);
 
         if (intersects.length) {
             if (!currentIntersect) {

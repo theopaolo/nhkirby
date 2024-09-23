@@ -166,25 +166,107 @@ button {
   z-index: 999;
 }
 
-h1:hover, li:hover, button:hover, a:hover {
+h1:hover, button:hover, a:hover {
   cursor: pointer;
   color: var(--light-color);
   text-shadow: 0 0 2px white;
 }
 
-.webgl
-{
+.webgl {
   position: fixed;
   top: 0;
   left: 0;
   outline: none;
+  z-index: 1;
+}
+
+#starry-sky {
+  position: fixed;
+  top: 0;
+  left: 0;
+  outline: none;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  pointer-events: none;
 }
 
 /* Button animation*/
+.fullscreen-icon {
+  width: 20px;
+  height: 20  px;
+  cursor: pointer;
+}
+
+.fullscreen-icon path {
+  box-shadow: 0 0 2px #a1a1a1;
+  mix-blend-mode: difference;
+  fill: var(--main-color);
+  transition: fill 0.3s ease; /* Ajout d'une transition pour un effet plus fluide */
+}
+
+.fullscreen-icon path {
+  transition: transform 0.3s ease-out;
+}
+
+.fullscreen-icon path:nth-child(1) {
+  transform: translate(10%, -10%) scale(1.1);
+}
+.fullscreen-icon path:nth-child(2) {
+  transform: translate(-10%, 10%) scale(1.1);
+}
+.fullscreen-icon path:nth-child(3) {
+  transform: translate(-10%, -10%) scale(1.1);
+}
+.fullscreen-icon path:nth-child(4) {
+  transform: translate(10%, 10%) scale(1.1);
+}
+
+.fullscreen-icon:hover path,
+.fullscreenbtn.active path {
+  transition: transform 0.3s ease-out;
+  fill: #ffffff;
+  transform: translate(0, 0);
+}
 
 .fullscreenbtn:hover {
   cursor: pointer;
   color: var(--light-color) !important;
+}
+
+.play-icon {
+  display: block;
+}
+
+.pause-icon {
+  display: none;
+}
+
+.soundbtn.active .play-icon {
+  display: none;
+}
+
+.soundbtn.active .pause-icon {
+  display: block;
+}
+
+.soundbtn.active .playpausebtn .pause-icon rect {
+  stroke: #ffffff;
+}
+
+.play-icon,
+.pause-icon {
+  transition: .3s all ease-in-out;
+}
+
+.play-icon:hover path {
+  stroke: var(--light-color) !important;
+  transition: .3s all ease-in-out;
+}
+
+.pause-icon:hover rect  {
+  stroke: var(--main-color) !important;
+  transition: .3s all ease-in-out;
 }
 
 .fullscreenbtn,
@@ -193,7 +275,7 @@ h1:hover, li:hover, button:hover, a:hover {
   align-items: center;
   cursor: pointer;
   pointer-events: visible;
-  height: 14px;
+  height: 18px;
 }
 
 .wave {
@@ -204,7 +286,7 @@ h1:hover, li:hover, button:hover, a:hover {
 }
 
 .wave span {
-  height: 10px;
+  height: 16px;
   margin-right: 4px;
   display: block;
   background-color: var(--main-color);
@@ -276,7 +358,7 @@ h1:hover, li:hover, button:hover, a:hover {
 }
 
 .img-active:hover {
-  cursor: url(./static/icons/cursormin.svg), auto;
+  cursor: url(../icons/cursormin.svg), auto;
 }
 
 /* LOADING BAR */
@@ -446,6 +528,8 @@ h1:hover, li:hover, button:hover, a:hover {
   bottom: 0;
 }
 
+
+
 .arrow-wrap {
   position: fixed;
   bottom: 1rem;
@@ -489,7 +573,7 @@ h1:hover, li:hover, button:hover, a:hover {
 }
 
 .cls::before {
-  content: url("./static/icons/clsbtn.png");
+  content: url("../icons/clsbtn.png");
   display: inline-block;
   margin-right: .5rem;
   margin-top: 3px;
@@ -577,6 +661,18 @@ h1:hover, li:hover, button:hover, a:hover {
 }
 
 /* CLASS STYLES */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
 .flex {
   display: flex;
 }
@@ -859,11 +955,15 @@ section picture {
   position: fixed;
   z-index: 999;
   bottom: 1rem;
-
+  pointer-events: none;
   top: 50%;
   transform: translateY(-50%);
-
   -webkit-tap-highlight-color: transparent;
+}
+
+.nav-sep {
+  display: block;
+  width: 40dvw;
 }
 
 .next-prev a {
@@ -871,12 +971,16 @@ section picture {
   flex: 1;
 }
 
+.next, .prev {
+  pointer-events: visible;
+}
+
 .next:hover {
-  cursor: url(./static/icons/cursornext.svg), auto;
+  cursor: url(../icons/cursornext.svg), auto;
 }
 
 .prev:hover {
-  cursor: url(./static/icons/cursorprev.svg), auto;
+  cursor: url(../icons/cursorprev.svg), auto;
 }
 
 .nav-action, .btn-close {
@@ -984,6 +1088,13 @@ section picture {
   padding: .25rem .5rem;
 }
 
+.langs button:hover {
+  cursor: pointer;
+  color: gray;
+  border-color: gray;
+  background-color: #fff;
+}
+
 .langs p {
   margin-block-end: 2rem;
 }
@@ -1064,10 +1175,6 @@ section picture {
 
   .nav-action{
     display: none;
-  }
-
-  .intro-text, .intro-text p{
-    text-align: justify;
   }
 
   .slides {

@@ -540,8 +540,12 @@ var _swupDefault = parcelHelpers.interopDefault(_swup);
 var _scriptManager = require("./scriptManager");
 var _swupManager = require("./swupManager");
 var _mouseHandlerJs = require("./modules/mouseHandler.js");
-var _lightboxHandlerJs = require("./modules/lightboxHandler.js");
+// import { initLightboxHandler } from './modules/lightboxHandler.js';
+var _videoLightboxHandlerJs = require("./modules/videoLightboxHandler.js");
 var _controlsManagerJs = require("./modules/controlsManager.js");
+var _starrySkyJs = require("./starrySky.js");
+const starsCanvas = document.getElementById("starry-sky");
+(0, _starrySkyJs.initializeStarrySky)(starsCanvas);
 // Constants
 const gsap = window.gsap;
 const INITIAL_CAMERA_POSITION = {
@@ -558,7 +562,7 @@ const GOLDEN_NUM = 1.618033988749895;
 // Scene Setup
 const canvas = document.querySelector("canvas.webgl");
 const scene = new _three.Scene();
-scene.background = new _three.Color(0x0d0d0d);
+scene.background = null;
 const camera = initCamera();
 scene.add(camera);
 // Geometry and Materials
@@ -571,16 +575,15 @@ const SHARED_MATERIAL = new _three.MeshBasicMaterial({
 // Groups and Arrays
 const IMG_GROUP = new _three.Group();
 const IMG_OBJECTS = [];
+const videoMeshes = [];
 // DOM Elements
 const DOM_VERTICALS_IMAGES = document.querySelectorAll(".imgverticales span");
 const DOM_HORIZONTALES_IMAGES = document.querySelectorAll(".imghorizontales span");
 const DOM_VIDEOS = document.querySelectorAll(".video-sphere");
-const videos = [];
 const verticales = [];
 const horizontales = [];
 DOM_VERTICALS_IMAGES.forEach((imgSrc)=>verticales.push(imgSrc.dataset.imgurl));
 DOM_HORIZONTALES_IMAGES.forEach((imgSrc)=>horizontales.push(imgSrc.dataset.imgurl));
-DOM_VIDEOS.forEach((videoSrc)=>videos.push(videoSrc.src));
 // Initialization Functions
 function initCamera() {
     const cam = new _three.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.05, 1000);
@@ -589,8 +592,9 @@ function initCamera() {
 }
 function initRenderer(canvas) {
     const renderer = new _three.WebGLRenderer({
-        canvas
-    });
+        canvas,
+        alpha: true
+    }); // Enable alpha for transparency
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     return renderer;
@@ -672,19 +676,22 @@ function fiboSphere(imgLght, iter, mesh, size) {
 // Video Sphere Function (Commented Out)
 function vidSphere(videoArray) {
     let y = 0;
-    let imgLght = videoArray.length;
+    let videoLght = videoArray.length;
     for (let video of videoArray){
-        video.play();
-        let vidTexture = new _three.VideoTexture(video);
+        video.play(); // Start playing the video
+        let vidTexture = new _three.VideoTexture(video); // Create video texture
         let planeMaterial = new _three.MeshBasicMaterial({
             map: vidTexture
         });
         planeMaterial.side = _three.DoubleSide;
-        let planeMesh = new _three.Mesh(PLANE_GEOMETRY_HORIZONTAL, planeMaterial);
+        let planeMesh = new _three.Mesh(PLANE_GEOMETRY_HORIZONTAL, planeMaterial); // Create a mesh for the video
         y += 1;
-        fiboSphere(imgLght, y, planeMesh, 6);
+        fiboSphere(videoLght, y, planeMesh, 6); // Position the video mesh in the scene
+        videoMeshes.push(planeMesh); // Add the planeMesh to the videoMeshes array
     }
+    scene.add(...videoMeshes); // Add the video meshes to the scene
 }
+vidSphere(DOM_VIDEOS);
 // Event Handlers
 function handleExploreButtonClick() {
     const tl = gsap.timeline();
@@ -772,28 +779,17 @@ const randomRange = (min, max)=>Math.random() * (max - min) + min;
 function zoomIn() {
     const randomPos = ()=>randomRange(0, 5);
     gsap.timeline().fromTo(camera.position, {
-        x: 900,
-        y: 500,
-        z: 0
+        x: 15,
+        y: -20,
+        z: 10
     }, {
         x: 55,
         y: 0,
         z: 0,
-        duration: 2,
-        ease: "power3.inOut"
-    }).to(camera.position, {
-        x: randomPos(),
-        y: 0,
-        z: 0,
-        duration: 3,
-        ease: "power3.inOut"
-    }).to(camera.position, {
-        x: 55,
-        y: 0,
-        z: 0,
-        duration: 2,
+        duration: 4,
         ease: "power3.inOut"
     });
+// .to(camera.position, { x: 55, y: 0, z: 0, duration: 2, ease: "power3.inOut" });
 }
 function removeOverlay() {
     gsap.to(overlay.material.uniforms.uAlpha, {
@@ -812,10 +808,12 @@ function tick() {
 const overlay = initOverlay();
 scene.add(overlay);
 const trackballControls = (0, _controlsManagerJs.initControls)(camera, canvas);
-const { updateIntersect , getCurrentIntersect  } = (0, _mouseHandlerJs.initMouseHandler)(canvas, camera, IMG_OBJECTS);
+const { updateIntersect , getCurrentIntersect  } = (0, _mouseHandlerJs.initMouseHandler)(canvas, camera, IMG_OBJECTS, videoMeshes);
 // Initialize lightbox handler
 const lightbox = document.querySelector(".lightbox");
-(0, _lightboxHandlerJs.initLightboxHandler)(lightbox, IMG_OBJECTS, canvas, getCurrentIntersect);
+// initLightboxHandler(lightbox, IMG_OBJECTS, canvas, getCurrentIntersect);
+// Example in your main app:
+(0, _videoLightboxHandlerJs.initLightboxHandlers)(lightbox, IMG_OBJECTS, videoMeshes, DOM_VIDEOS, canvas, getCurrentIntersect);
 const renderer = initRenderer(canvas);
 (0, _swupManager.initSwup)(()=>{
     (0, _scriptManager.initScripts)();
@@ -839,7 +837,7 @@ document.addEventListener("MSFullscreenChange", handleWindowResizeRAF);
 initLoading();
 tick();
 
-},{"three":"Br5dd","swup":"4uXKc","@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI","./scriptManager":"hykEh","./swupManager":"ghxDj","./modules/mouseHandler.js":"6wcRJ","./modules/lightboxHandler.js":"6Idmk","./modules/controlsManager.js":"8j0VF"}],"Br5dd":[function(require,module,exports) {
+},{"three":"Br5dd","swup":"4uXKc","@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI","./scriptManager":"hykEh","./swupManager":"ghxDj","./modules/mouseHandler.js":"6wcRJ","./modules/controlsManager.js":"8j0VF","./starrySky.js":"70oWH","./modules/videoLightboxHandler.js":"hpKAW"}],"Br5dd":[function(require,module,exports) {
 /**
  * @license
  * Copyright 2010-2022 Three.js Authors
@@ -31310,12 +31308,11 @@ function initSwup(onContentReplaced) {
 }
 
 },{"swup":"4uXKc","@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI"}],"6wcRJ":[function(require,module,exports) {
-// mouseHandler.js
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "initMouseHandler", ()=>initMouseHandler);
 var _three = require("three");
-function initMouseHandler(canvas, camera, imgObjects) {
+function initMouseHandler(canvas, camera, imgObjects, videoObjects) {
     const raycaster = new _three.Raycaster();
     const mouse = new _three.Vector2();
     let currentIntersect = null;
@@ -31346,7 +31343,12 @@ function initMouseHandler(canvas, camera, imgObjects) {
     };
     const updateIntersect = ()=>{
         raycaster.setFromCamera(mouse, camera);
-        const intersects = raycaster.intersectObjects(imgObjects);
+        // Combine both image and video objects for raycasting
+        const allObjects = [
+            ...imgObjects,
+            ...videoObjects
+        ];
+        const intersects = raycaster.intersectObjects(allObjects);
         if (intersects.length) {
             if (!currentIntersect) {
                 currentIntersect = intersects[0];
@@ -31364,73 +31366,7 @@ function initMouseHandler(canvas, camera, imgObjects) {
     };
 }
 
-},{"three":"Br5dd","@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI"}],"6Idmk":[function(require,module,exports) {
-// lightboxHandler.js
-var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
-parcelHelpers.defineInteropFlag(exports);
-parcelHelpers.export(exports, "initLightboxHandler", ()=>initLightboxHandler);
-const gsap = window.gsap;
-function initLightboxHandler(lightbox, imgObjects, canvas, getCurrentIntersect) {
-    let imgbox = null;
-    let imgcreated = false;
-    let tl = gsap.timeline();
-    function createImg(url) {
-        if (imgcreated === false) {
-            const newimg = document.createElement("img");
-            newimg.src = url;
-            newimg.classList.add("imagebox", "img-active");
-            lightbox.appendChild(newimg);
-            imgbox = document.querySelector(".imagebox");
-            imgcreated = true;
-            tl.to(".lightbox", {
-                opacity: 1,
-                zIndex: 999,
-                duration: 0.5
-            }).from(".imagebox", {
-                opacity: 0,
-                zIndex: 0,
-                duration: 0
-            });
-            imgbox.addEventListener("click", removeImage);
-        } else removeImage();
-    }
-    function removeImage() {
-        if (imgcreated === true) {
-            tl.to(".lightbox", {
-                opacity: 0,
-                duration: 1,
-                zIndex: 0
-            });
-            setTimeout(()=>{
-                imgbox.remove();
-                imgcreated = false;
-            }, 1000);
-        }
-    }
-    const handleTap = (event)=>{
-        event.preventDefault();
-        const currentIntersect = getCurrentIntersect();
-        if (currentIntersect) {
-            for (const imgObject of imgObjects)if (currentIntersect.object === imgObject) {
-                createImg(imgObject.material.map.source.data.currentSrc);
-                break;
-            }
-        } else removeImage();
-    };
-    const handleDoubleClick = ()=>{
-        const currentIntersect = getCurrentIntersect();
-        if (currentIntersect) {
-            for (const imgObject of imgObjects)if (currentIntersect.object === imgObject) {
-                createImg(imgObject.material.map.source.data.currentSrc);
-                break;
-            }
-        }
-    };
-    canvas.addEventListener("touchstart", handleTap);
-    canvas.addEventListener("dblclick", handleDoubleClick);
-}
-
-},{"@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI"}],"8j0VF":[function(require,module,exports) {
+},{"three":"Br5dd","@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI"}],"8j0VF":[function(require,module,exports) {
 // trackballControls.js
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
@@ -31880,6 +31816,231 @@ class TrackballControls extends (0, _three.EventDispatcher) {
     }
 }
 
-},{"three":"Br5dd","@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI"}]},["7eoOY","6Bv9J"], "6Bv9J", "parcelRequire94c2")
+},{"three":"Br5dd","@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI"}],"70oWH":[function(require,module,exports) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+parcelHelpers.export(exports, "initializeStarrySky", ()=>initializeStarrySky);
+function initializeStarrySky(starsCanvas) {
+    const ctx = starsCanvas.getContext("2d");
+    // Set canvas size to the size of the window
+    starsCanvas.width = window.innerWidth;
+    starsCanvas.height = window.innerHeight;
+    // Function to generate a random number within a range
+    function random(min, max) {
+        return Math.random() * (max - min) + min;
+    }
+    // Create an array to store star objects
+    const stars = [];
+    function createStars() {
+        const numberOfStars = 300; // Number of stars to draw
+        for(let i = 0; i < numberOfStars; i++)stars.push({
+            x: Math.random() * starsCanvas.width,
+            y: Math.random() * starsCanvas.height,
+            radius: random(0.1, 0.7),
+            opacity: random(0.2, .6),
+            speed: random(0.005, 0.01)
+        });
+    }
+    // Function to draw stars
+    function drawStars() {
+        ctx.fillStyle = "#0d0d0d";
+        ctx.fillRect(0, 0, starsCanvas.width, starsCanvas.height);
+        stars.forEach((star)=>{
+            ctx.beginPath();
+            ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(255, 255, 255, ${star.opacity})`;
+            ctx.fill();
+            // Update the opacity to create a twinkling effect
+            star.opacity += star.speed;
+            if (star.opacity > 1 || star.opacity < 0) star.speed = -star.speed; // Reverse direction when reaching limits
+        });
+        requestAnimationFrame(drawStars); // Animate
+    }
+    // Create the stars and start the animation
+    createStars();
+    drawStars();
+    // Redraw on window resize
+    window.addEventListener("resize", ()=>{
+        starsCanvas.width = window.innerWidth;
+        starsCanvas.height = window.innerHeight;
+        stars.length = 0; // Clear existing stars
+        createStars(); // Recreate stars for the new size
+    });
+}
+
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI"}],"hpKAW":[function(require,module,exports) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+// Image lightbox handler
+parcelHelpers.export(exports, "initLightboxHandler", ()=>initLightboxHandler);
+// Video lightbox handler
+parcelHelpers.export(exports, "initVideoLightboxHandler", ()=>initVideoLightboxHandler);
+// Unified handler for both images and videos
+parcelHelpers.export(exports, "initLightboxHandlers", ()=>initLightboxHandlers);
+const gsap = window.gsap;
+function clearLightbox() {
+    // Remove any existing image or video in the lightbox
+    const existingImage = document.querySelector(".imagebox");
+    const existingVideo = document.querySelector(".videobox");
+    if (existingImage) existingImage.remove();
+    if (existingVideo) {
+        existingVideo.pause(); // Ensure the video is paused before removing
+        existingVideo.remove();
+    }
+}
+function initLightboxHandler(lightbox, imgObjects, canvas, getCurrentIntersect) {
+    let imgbox = null;
+    let imgcreated = false;
+    let tl = gsap.timeline();
+    function createImg(url) {
+        clearLightbox(); // Clear any existing images or videos
+        const newimg = document.createElement("img");
+        newimg.src = url;
+        newimg.classList.add("imagebox", "img-active");
+        lightbox.appendChild(newimg);
+        imgbox = document.querySelector(".imagebox");
+        imgcreated = true;
+        tl.to(".lightbox", {
+            opacity: 1,
+            zIndex: 999,
+            duration: 0.5
+        }).from(".imagebox", {
+            opacity: 0,
+            zIndex: 0,
+            duration: 0
+        });
+        imgbox.addEventListener("click", removeImage);
+    }
+    function removeImage() {
+        if (imgcreated) {
+            tl.to(".lightbox", {
+                opacity: 0,
+                duration: 1,
+                zIndex: 0
+            });
+            setTimeout(()=>{
+                imgbox.remove();
+                imgcreated = false;
+            }, 1000);
+        }
+    }
+    const handleTap = (event)=>{
+        event.preventDefault();
+        const currentIntersect = getCurrentIntersect();
+        if (currentIntersect) {
+            for (const imgObject of imgObjects)if (currentIntersect.object === imgObject) {
+                createImg(imgObject.material.map.source.data.currentSrc);
+                break;
+            }
+        } else removeImage();
+    };
+    const handleDoubleClick = ()=>{
+        const currentIntersect = getCurrentIntersect();
+        if (currentIntersect) {
+            for (const imgObject of imgObjects)if (currentIntersect.object === imgObject) {
+                createImg(imgObject.material.map.source.data.currentSrc);
+                break;
+            }
+        }
+    };
+    canvas.addEventListener("touchstart", handleTap);
+    canvas.addEventListener("dblclick", handleDoubleClick);
+}
+function initVideoLightboxHandler(lightbox, videoMeshes, DOM_VIDEOS, canvas, getCurrentIntersect) {
+    let videobox = null;
+    let videocreated = false;
+    let tl = gsap.timeline();
+    function createVideo(url) {
+        clearLightbox(); // Clear any existing images or videos
+        const newVideo = document.createElement("video");
+        newVideo.src = url;
+        newVideo.setAttribute("controls", "controls");
+        newVideo.setAttribute("autoplay", "autoplay");
+        newVideo.setAttribute("loop", "loop");
+        newVideo.classList.add("videobox", "video-active");
+        lightbox.appendChild(newVideo);
+        videobox = document.querySelector(".videobox");
+        videocreated = true;
+        tl.to(".lightbox", {
+            opacity: 1,
+            zIndex: 999,
+            duration: 0.5
+        }).from(".videobox", {
+            opacity: 0,
+            zIndex: 0,
+            duration: 0
+        });
+        videobox.addEventListener("click", removeVideo);
+    }
+    function removeVideo() {
+        if (videocreated) {
+            tl.to(".lightbox", {
+                opacity: 0,
+                duration: 1,
+                zIndex: 0
+            });
+            setTimeout(()=>{
+                videobox.pause();
+                videobox.remove();
+                videocreated = false;
+            }, 1000);
+        }
+    }
+    const handleTap = (event)=>{
+        event.preventDefault();
+        const currentIntersect = getCurrentIntersect();
+        if (currentIntersect) {
+            for(let i = 0; i < videoMeshes.length; i++)if (currentIntersect.object === videoMeshes[i]) {
+                const videoSrc = DOM_VIDEOS[i].currentSrc;
+                createVideo(videoSrc);
+                break;
+            }
+        } else removeVideo();
+    };
+    const handleDoubleClick = ()=>{
+        const currentIntersect = getCurrentIntersect();
+        if (currentIntersect) {
+            for(let i = 0; i < videoMeshes.length; i++)if (currentIntersect.object === videoMeshes[i]) {
+                const videoSrc = DOM_VIDEOS[i].currentSrc;
+                createVideo(videoSrc);
+                break;
+            }
+        }
+    };
+    canvas.addEventListener("touchstart", handleTap);
+    canvas.addEventListener("dblclick", handleDoubleClick);
+}
+function initLightboxHandlers(lightbox, imgObjects, videoMeshes, DOM_VIDEOS, canvas, getCurrentIntersect) {
+    canvas.addEventListener("touchstart", (event)=>{
+        event.preventDefault();
+        const currentIntersect = getCurrentIntersect();
+        if (currentIntersect) {
+            for (const imgObject of imgObjects)if (currentIntersect.object === imgObject) {
+                initLightboxHandler(lightbox, imgObjects, canvas, getCurrentIntersect);
+                return;
+            }
+            for(let i = 0; i < videoMeshes.length; i++)if (currentIntersect.object === videoMeshes[i]) {
+                initVideoLightboxHandler(lightbox, videoMeshes, DOM_VIDEOS, canvas, getCurrentIntersect);
+                return;
+            }
+        }
+    });
+    canvas.addEventListener("dblclick", (event)=>{
+        event.preventDefault();
+        const currentIntersect = getCurrentIntersect();
+        if (currentIntersect) {
+            for (const imgObject of imgObjects)if (currentIntersect.object === imgObject) {
+                initLightboxHandler(lightbox, imgObjects, canvas, getCurrentIntersect);
+                return;
+            }
+            for(let i = 0; i < videoMeshes.length; i++)if (currentIntersect.object === videoMeshes[i]) {
+                initVideoLightboxHandler(lightbox, videoMeshes, DOM_VIDEOS, canvas, getCurrentIntersect);
+                return;
+            }
+        }
+    });
+}
+
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI"}]},["7eoOY","6Bv9J"], "6Bv9J", "parcelRequire94c2")
 
 //# sourceMappingURL=app.js.map
