@@ -4,7 +4,9 @@ export function initMouseHandler(canvas, camera, imgObjects, videoObjects) {
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
     let currentIntersect = null;
+    let previousIntersect = null;
 
+    // SVG cursor for the "plus" icon
     const plusIcon = `
     <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="14" height="14" viewBox="0 0 14 14">
       <defs>
@@ -24,11 +26,13 @@ export function initMouseHandler(canvas, camera, imgObjects, videoObjects) {
     const plusBlob = new Blob([plusIcon], { type: 'image/svg+xml' });
     const iconPlusUrl = URL.createObjectURL(plusBlob);
 
+    // Update the mouse position
     const handleMouseMove = (event) => {
-        mouse.x = event.clientX / window.innerWidth * 2 - 1;
-        mouse.y = -(event.clientY / window.innerHeight * 2 - 1);
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
     };
 
+    // Update raycasting based on the current mouse position
     const updateIntersect = () => {
         raycaster.setFromCamera(mouse, camera);
 
@@ -37,15 +41,31 @@ export function initMouseHandler(canvas, camera, imgObjects, videoObjects) {
         const intersects = raycaster.intersectObjects(allObjects);
 
         if (intersects.length) {
-            if (!currentIntersect) {
-                currentIntersect = intersects[0];
-                document.body.style.cursor = `url('${iconPlusUrl}'), auto`;
+            currentIntersect = intersects[0];
+
+            // If there's a previous intersect and it's different, reset the previous one's color
+            if (previousIntersect && previousIntersect !== currentIntersect) {
+                previousIntersect.object.material.color.set(0xffffff);  // Reset previous color to white (or original)
+
             }
+
+            // Change the color of the current intersected object
+            if (currentIntersect.object.material) {
+                currentIntersect.object.material.color.set(0x800000);  // Set color to dark red
+            }
+
+            document.body.style.cursor = `url('${iconPlusUrl}'), auto`;
+
+            // Update the previous intersect
+            previousIntersect = currentIntersect;
         } else {
-            if (currentIntersect) {
-                document.body.style.cursor = "grab";
-                currentIntersect = null;
+            // If no intersect is found, reset the color of the previously intersected object
+            if (previousIntersect) {
+                previousIntersect.object.material.color.set(0xffffff);  // Reset previous color to white
+                previousIntersect = null;
             }
+
+            document.body.style.cursor = "grab";
         }
     };
 
@@ -53,6 +73,6 @@ export function initMouseHandler(canvas, camera, imgObjects, videoObjects) {
 
     return {
         updateIntersect,
-        getCurrentIntersect: () => currentIntersect,
+        getCurrentIntersect: () => currentIntersect,  // Return the current intersected object, if any
     };
 }

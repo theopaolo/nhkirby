@@ -1,5 +1,8 @@
 <?php snippet('header') ?>
-<?php $isdark = $page->bgdark()->toBool(); $fullheigt = $page->marges()->toBool();?>
+<?php
+$isdark = $page->bgdark()->toBool();
+$fullheight = $page->marges()->toBool(); // Corrected variable name from $fullheigt to $fullheight
+?>
 <div class="overlay"><span><?= $site->loading()->text() ?></span></div>
 <main>
     <section id="series">
@@ -15,17 +18,17 @@
         </div>
 
         <section class="slides intro-text bg-light <?php if($isdark === true){ echo "bg-dark"; }?>">
-          <div  class="bg-light <?php if($isdark === true){ echo "bg-dark"; }?>">
+          <div class="bg-light <?php if($isdark === true){ echo "bg-dark"; }?>">
             <h2><?= $page->titre() ?></h2>
             <?= $page->text()->kirbytext() ?>
           </div>
-          <div class="counter desk-hide mob-show">1</span>-<span class="firstall"></span> </div>
+          <div class="counter desk-hide mob-show">1-<span class="firstall"></span> </div>
         </section>
 
         <div class="next-prev">
-          <a class="prev" ></a>
+          <a class="prev"></a>
           <span class="nav-sep"></span>
-          <a class="next" ></a>
+          <a class="next"></a>
         </div>
 
         <?php foreach ($page->gallery()->toLayouts() as $layout): ?>
@@ -34,17 +37,66 @@
             if ($layout->columns()->count() > 1) {
                 $seriegridclass = 'serie-grid';
             }
+
+            // Initialize a flag to check if there are any non-video blocks
+            $hasNonVideoBlocks = false;
+
+            // Check for non-video blocks
+            foreach ($layout->columns() as $column) {
+              foreach ($column->blocks() as $block) {
+                if ($block->type() != 'video') {
+                  $hasNonVideoBlocks = true;
+                  break 2; // Exit both loops since we found a non-video block
+                }
+              }
+            }
           ?>
+
+          <?php if ($hasNonVideoBlocks): ?>
           <section class="slides bg-light <?php if($isdark === true){ echo "bg-dark"; }?> <?= $layout->attrs()->presentation() ?> <?= $seriegridclass ?>">
-            <?php foreach($layout->columns() as $column):?>
+            <?php foreach ($layout->columns() as $column): ?>
               <?php foreach ($column->blocks() as $block): ?>
-                <div class="column <?= $block->position() ?> <?php if($block->gridcol()->toBool() === true){ echo "grid-col-2"; }?> <?php if($fullheigt === true){ echo "full-height"; }?>"">
-                  <?= $block ?>
-                </div>
-              <?php endforeach ?>
-            <?php endforeach ?>
+                <?php if ($block->type() == 'video'): ?>
+                  <!-- Skip rendering the video block here; we'll handle it separately -->
+                  <?php continue; ?>
+                <?php else: ?>
+                  <div class="column <?= $block->position() ?> <?php if ($block->gridcol()->toBool()) { echo "grid-col-2"; } ?> <?php if ($fullheight) { echo "full-height"; } ?>">
+                    <?= $block ?>
+                  </div>
+                <?php endif; ?>
+              <?php endforeach; ?>
+            <?php endforeach; ?>
           </section>
-        <?php endforeach ?>
+          <?php endif; // End of hasNonVideoBlocks check ?>
+        <?php endforeach; ?>
+
+        <!-- Now handle video blocks separately -->
+        <?php foreach ($page->gallery()->toLayouts() as $layout): ?>
+          <?php foreach ($layout->columns() as $column): ?>
+            <?php foreach ($column->blocks() as $block): ?>
+              <?php if ($block->type() == 'video'): ?>
+                <?php
+                  $caption = $block->caption();
+                  if ($block->location() == 'kirby' && $video = $block->video()->toFile()) {
+                    $url = $video->url();
+                  } else {
+                    $url = $block->url();
+                  }
+                ?>
+                <section class="slides center">
+                  <div class="serie-center video-outer">
+                    <div class="video-inner video-player">
+                      <iframe src="<?= $url ?>" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>
+                    </div>
+                  </div>
+                  <!-- <?php if ($caption->isNotEmpty()): ?>
+                    <div class="video-caption"><?= $caption ?></div>
+                  <?php endif; ?> -->
+                </section>
+              <?php endif; ?>
+            <?php endforeach; ?>
+          <?php endforeach; ?>
+        <?php endforeach; ?>
 
         <?php if($page->video()->isNotEmpty()):?>
           <section class="slides center">
@@ -56,9 +108,11 @@
           </section>
         <?php endif ?>
 
+
       </section>
     </section>
 </main>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.4/gsap.min.js"></script>
 <?= js('assets/js/series.js') ?>
 <?php snippet('footer') ?>

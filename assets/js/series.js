@@ -1,3 +1,5 @@
+const gsap = window.gsap;
+console.log('serie gspa', gsap)
 let nextBtn = document.querySelector('.next')
 let prevBtn = document.querySelector('.prev')
 let slides = document.querySelectorAll(".slides")
@@ -26,7 +28,6 @@ window.addEventListener('resize', nameCountHeight)
 
 function scrollTop() {
   window.scrollTo(0, 0);
-  console.log('scrollTop');
 }
 
 function nameCountHeight() {
@@ -75,7 +76,6 @@ window.addEventListener("keydown", function(event) {
 function plusSlides(n) {
   showSlides(slidesIndex += n);
   nameCountHeight()
-  // longtext()
 }
 
 allimgcount.innerHTML = slidesCount
@@ -139,4 +139,78 @@ const controls = `
 
 document.addEventListener('DOMContentLoaded', () => {
   const players = Array.from(document.querySelectorAll('.video-player')).map((p) => new Plyr(p, {controls}));
+});
+
+
+const lighterboxHTML = `
+  <div id="lighterbox" class="lighterbox">
+    <img class="lighterbox-content" id="lighterbox-img">
+  </div>
+`;
+
+// Add the lighterbox HTML to the body
+document.body.insertAdjacentHTML('beforeend', lighterboxHTML);
+
+// Get references to the lighterbox elements
+const lighterbox = document.getElementById('lighterbox');
+const lighterboxImg = document.getElementById('lighterbox-img');
+
+// Create close button
+const closeBtn = document.createElement('button');
+closeBtn.innerHTML = '&times;';
+closeBtn.className = 'lb-close';
+lighterbox.appendChild(closeBtn);
+
+// Function to open the lighterbox
+function openLighterbox(imgSrc, imgAlt) {
+  lighterbox.style.display = 'block';
+  lighterboxImg.src = imgSrc;
+
+  // Reset the opacity before animating
+  console.log("lighterbox", lighterbox)
+  gsap.set(lighterbox, { opacity: 0 });
+
+  // Animate the lighterbox fading in
+  gsap.to(lighterbox, {
+    duration: 0.5,
+    opacity: 1,
+    ease: "power2.inOut"
+  });
+}
+
+// Function to close the lighterbox
+function closeLighterbox() {
+  // Animate the lighterbox fading out
+  gsap.to(lighterbox, {
+    duration: 0.5,
+    opacity: 0,
+    ease: "power2.inOut",
+    onComplete: () => {
+      lighterbox.style.display = 'none';
+    }
+  });
+}
+// Add click event listeners to all gallery images
+const allImgs = document.querySelectorAll(".gallery img");
+allImgs.forEach(img => {
+  img.addEventListener('click', function() {
+    openLighterbox(this.src);
+  });
+});
+
+// Close the lighterbox when clicking the close button
+closeBtn.addEventListener('click', closeLighterbox);
+
+// Close the lighterbox when clicking outside the image
+lighterbox.addEventListener('click', function(e) {
+  if (e.target === this) {
+    closeLighterbox();
+  }
+});
+
+// Add keyboard support (Esc to close)
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    closeLighterbox();
+  }
 });

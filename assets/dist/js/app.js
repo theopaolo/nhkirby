@@ -142,10 +142,10 @@
       this[globalName] = mainExports;
     }
   }
-})({"7eoOY":[function(require,module,exports) {
+})({"dItwV":[function(require,module,exports) {
 var global = arguments[3];
 var HMR_HOST = null;
-var HMR_PORT = 1234;
+var HMR_PORT = 62196;
 var HMR_SECURE = false;
 var HMR_ENV_HASH = "d6ea1d42532a7575";
 module.bundle.HMR_BUNDLE_ID = "061eebfa9d09263a";
@@ -837,7 +837,7 @@ document.addEventListener("MSFullscreenChange", handleWindowResizeRAF);
 initLoading();
 tick();
 
-},{"three":"Br5dd","swup":"4uXKc","@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI","./scriptManager":"hykEh","./swupManager":"ghxDj","./modules/mouseHandler.js":"6wcRJ","./modules/controlsManager.js":"8j0VF","./starrySky.js":"70oWH","./modules/videoLightboxHandler.js":"hpKAW"}],"Br5dd":[function(require,module,exports) {
+},{"three":"Br5dd","swup":"4uXKc","@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI","./scriptManager":"hykEh","./swupManager":"ghxDj","./modules/mouseHandler.js":"6wcRJ","./modules/controlsManager.js":"8j0VF","./modules/videoLightboxHandler.js":"hpKAW","./starrySky.js":"70oWH"}],"Br5dd":[function(require,module,exports) {
 /**
  * @license
  * Copyright 2010-2022 Three.js Authors
@@ -31316,6 +31316,8 @@ function initMouseHandler(canvas, camera, imgObjects, videoObjects) {
     const raycaster = new _three.Raycaster();
     const mouse = new _three.Vector2();
     let currentIntersect = null;
+    let previousIntersect = null;
+    // SVG cursor for the "plus" icon
     const plusIcon = `
     <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="14" height="14" viewBox="0 0 14 14">
       <defs>
@@ -31337,10 +31339,12 @@ function initMouseHandler(canvas, camera, imgObjects, videoObjects) {
         type: "image/svg+xml"
     });
     const iconPlusUrl = URL.createObjectURL(plusBlob);
+    // Update the mouse position
     const handleMouseMove = (event)=>{
         mouse.x = event.clientX / window.innerWidth * 2 - 1;
-        mouse.y = -(event.clientY / window.innerHeight * 2 - 1);
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
     };
+    // Update raycasting based on the current mouse position
     const updateIntersect = ()=>{
         raycaster.setFromCamera(mouse, camera);
         // Combine both image and video objects for raycasting
@@ -31350,13 +31354,21 @@ function initMouseHandler(canvas, camera, imgObjects, videoObjects) {
         ];
         const intersects = raycaster.intersectObjects(allObjects);
         if (intersects.length) {
-            if (!currentIntersect) {
-                currentIntersect = intersects[0];
-                document.body.style.cursor = `url('${iconPlusUrl}'), auto`;
+            currentIntersect = intersects[0];
+            // If there's a previous intersect and it's different, reset the previous one's color
+            if (previousIntersect && previousIntersect !== currentIntersect) previousIntersect.object.material.color.set(0xffffff); // Reset previous color to white (or original)
+            // Change the color of the current intersected object
+            if (currentIntersect.object.material) currentIntersect.object.material.color.set(0x800000); // Set color to dark red
+            document.body.style.cursor = `url('${iconPlusUrl}'), auto`;
+            // Update the previous intersect
+            previousIntersect = currentIntersect;
+        } else {
+            // If no intersect is found, reset the color of the previously intersected object
+            if (previousIntersect) {
+                previousIntersect.object.material.color.set(0xffffff); // Reset previous color to white
+                previousIntersect = null;
             }
-        } else if (currentIntersect) {
             document.body.style.cursor = "grab";
-            currentIntersect = null;
         }
     };
     window.addEventListener("mousemove", handleMouseMove);
@@ -31816,59 +31828,7 @@ class TrackballControls extends (0, _three.EventDispatcher) {
     }
 }
 
-},{"three":"Br5dd","@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI"}],"70oWH":[function(require,module,exports) {
-var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
-parcelHelpers.defineInteropFlag(exports);
-parcelHelpers.export(exports, "initializeStarrySky", ()=>initializeStarrySky);
-function initializeStarrySky(starsCanvas) {
-    const ctx = starsCanvas.getContext("2d");
-    // Set canvas size to the size of the window
-    starsCanvas.width = window.innerWidth;
-    starsCanvas.height = window.innerHeight;
-    // Function to generate a random number within a range
-    function random(min, max) {
-        return Math.random() * (max - min) + min;
-    }
-    // Create an array to store star objects
-    const stars = [];
-    function createStars() {
-        const numberOfStars = 300; // Number of stars to draw
-        for(let i = 0; i < numberOfStars; i++)stars.push({
-            x: Math.random() * starsCanvas.width,
-            y: Math.random() * starsCanvas.height,
-            radius: random(0.1, 0.7),
-            opacity: random(0.2, .6),
-            speed: random(0.005, 0.01)
-        });
-    }
-    // Function to draw stars
-    function drawStars() {
-        ctx.fillStyle = "#0d0d0d";
-        ctx.fillRect(0, 0, starsCanvas.width, starsCanvas.height);
-        stars.forEach((star)=>{
-            ctx.beginPath();
-            ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(255, 255, 255, ${star.opacity})`;
-            ctx.fill();
-            // Update the opacity to create a twinkling effect
-            star.opacity += star.speed;
-            if (star.opacity > 1 || star.opacity < 0) star.speed = -star.speed; // Reverse direction when reaching limits
-        });
-        requestAnimationFrame(drawStars); // Animate
-    }
-    // Create the stars and start the animation
-    createStars();
-    drawStars();
-    // Redraw on window resize
-    window.addEventListener("resize", ()=>{
-        starsCanvas.width = window.innerWidth;
-        starsCanvas.height = window.innerHeight;
-        stars.length = 0; // Clear existing stars
-        createStars(); // Recreate stars for the new size
-    });
-}
-
-},{"@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI"}],"hpKAW":[function(require,module,exports) {
+},{"three":"Br5dd","@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI"}],"hpKAW":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 // Image lightbox handler
@@ -31884,7 +31844,7 @@ function clearLightbox() {
     const existingVideo = document.querySelector(".videobox");
     if (existingImage) existingImage.remove();
     if (existingVideo) {
-        existingVideo.pause(); // Ensure the video is paused before removing
+        existingVideo.pause();
         existingVideo.remove();
     }
 }
@@ -31954,7 +31914,7 @@ function initVideoLightboxHandler(lightbox, videoMeshes, DOM_VIDEOS, canvas, get
         clearLightbox(); // Clear any existing images or videos
         const newVideo = document.createElement("video");
         newVideo.src = url;
-        newVideo.setAttribute("controls", "controls");
+        newVideo.muted = true;
         newVideo.setAttribute("autoplay", "autoplay");
         newVideo.setAttribute("loop", "loop");
         newVideo.classList.add("videobox", "video-active");
@@ -32041,6 +32001,58 @@ function initLightboxHandlers(lightbox, imgObjects, videoMeshes, DOM_VIDEOS, can
     });
 }
 
-},{"@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI"}]},["7eoOY","6Bv9J"], "6Bv9J", "parcelRequire94c2")
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI"}],"70oWH":[function(require,module,exports) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+parcelHelpers.export(exports, "initializeStarrySky", ()=>initializeStarrySky);
+function initializeStarrySky(starsCanvas) {
+    const ctx = starsCanvas.getContext("2d");
+    // Set canvas size to the size of the window
+    starsCanvas.width = window.innerWidth;
+    starsCanvas.height = window.innerHeight;
+    // Function to generate a random number within a range
+    function random(min, max) {
+        return Math.random() * (max - min) + min;
+    }
+    // Create an array to store star objects
+    const stars = [];
+    function createStars() {
+        const numberOfStars = 300; // Number of stars to draw
+        for(let i = 0; i < numberOfStars; i++)stars.push({
+            x: Math.random() * starsCanvas.width,
+            y: Math.random() * starsCanvas.height,
+            radius: random(0.1, 0.7),
+            opacity: random(0.2, .6),
+            speed: random(0.005, 0.01)
+        });
+    }
+    // Function to draw stars
+    function drawStars() {
+        ctx.fillStyle = "#0d0d0d";
+        ctx.fillRect(0, 0, starsCanvas.width, starsCanvas.height);
+        stars.forEach((star)=>{
+            ctx.beginPath();
+            ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(255, 255, 255, ${star.opacity})`;
+            ctx.fill();
+            // Update the opacity to create a twinkling effect
+            star.opacity += star.speed;
+            if (star.opacity > 1 || star.opacity < 0) star.speed = -star.speed; // Reverse direction when reaching limits
+        });
+        requestAnimationFrame(drawStars); // Animate
+    }
+    // Create the stars and start the animation
+    createStars();
+    drawStars();
+    // Redraw on window resize
+    window.addEventListener("resize", ()=>{
+        starsCanvas.width = window.innerWidth;
+        starsCanvas.height = window.innerHeight;
+        stars.length = 0; // Clear existing stars
+        createStars(); // Recreate stars for the new size
+    });
+}
+
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI"}]},["dItwV","6Bv9J"], "6Bv9J", "parcelRequire94c2")
 
 //# sourceMappingURL=app.js.map

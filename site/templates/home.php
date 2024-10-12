@@ -1,5 +1,5 @@
-<?php snippet('header') ?>
-<?php snippet('intro') ?>
+<?php snippet("header"); ?>
+<?php snippet("intro"); ?>
 
 <div class="container exp">
 
@@ -38,61 +38,61 @@
       </div>
     </div>
 
-    <?php snippet('nav') ?>
+    <?php snippet("nav"); ?>
 
     <div class="lightbox">
     </div>
 
-    <?php if($sound = $site->fondsonore()->toFile()): ?>
+    <?php if ($sound = $site->fondsonore()->toFile()): ?>
       <audio loop>
         <source src="<?= $sound->url() ?>" type="<?= $sound->mime() ?>">
       </audio>
-    <?php endif ?>
+    <?php endif; ?>
 
   </div>
 
 <section class="imgverticales">
-  <?php foreach( $page->find('verticales')->images()->shuffle() as $image):  ?>
+  <?php foreach ($page->find("verticales")->images()->shuffle() as $image): ?>
     <span data-imgurl="<?= $image->thumb(["width" => 900])->url() ?>"></span>
-  <?php endforeach ?>
+  <?php endforeach; ?>
 </section>
 
 <section class="imghorizontales">
-  <?php foreach( $page->find('horizontales')->images()->shuffle() as $image):  ?>
+  <?php foreach ($page->find("horizontales")->images()->shuffle() as $image): ?>
     <span data-imgurl="<?= $image->thumb(["width" => 900])->url() ?>"></span>
-  <?php endforeach ?>
+  <?php endforeach; ?>
 </section>
 
 <section class="videos">
   <video class="video-sphere" loop muted="muted" crossOrigin="anonymous" playsinline style="display: none;" >
-    <source src="https://theopaolo.com/nhvideos/spectreeau.mp4" type='video/mp4' >
+    <source src="https://theopaolo-com.mon.world/nhvideos/spectreeau.mp4" type='video/mp4' >
   </video>
   <video class="video-sphere" loop muted="muted" crossOrigin="anonymous" playsinline style="display: none;" >
-    <source src="https://theopaolo.com/nhvideos/avion.mp4" type='video/mp4' >
+    <source src="https://theopaolo-com.mon.world/nhvideos/avion.mp4" type='video/mp4' >
   </video>
   <video class="video-sphere" loop muted="muted" crossOrigin="anonymous" playsinline style="display: none;" >
-    <source src="https://theopaolo.com/nhvideos/embryon.mp4" type='video/mp4' >
+    <source src="https://theopaolo-com.mon.world/nhvideos/embryon.mp4" type='video/mp4' >
   </video>
   <video class="video-sphere" loop muted="muted" crossOrigin="anonymous" playsinline style="display: none;" >
-    <source src="https://theopaolo.com/nhvideos/embryon.mp4" type='video/mp4' >
+    <source src="https://theopaolo-com.mon.world/nhvideos/embryon.mp4" type='video/mp4' >
   </video>
   <video class="video-sphere" loop muted="muted" crossOrigin="anonymous" playsinline style="display: none;" >
-    <source src="https://theopaolo.com/nhvideos/birds.mp4" type='video/mp4' >
+    <source src="https://theopaolo-com.mon.world/nhvideos/birds.mp4" type='video/mp4' >
   </video>
   <video class="video-sphere" loop muted="muted" crossOrigin="anonymous" playsinline style="display: none;" >
-    <source src="https://theopaolo.com/nhvideos/electricite.mp4" type='video/mp4' >
+    <source src="https://theopaolo-com.mon.world/nhvideos/electricite.mp4" type='video/mp4' >
   </video>
   <video class="video-sphere" loop muted="muted" crossOrigin="anonymous" playsinline style="display: none;" >
-    <source src="https://theopaolo.com/nhvideos/tambour.mp4" type='video/mp4' >
+    <source src="https://theopaolo-com.mon.world/nhvideos/tambour.mp4" type='video/mp4' >
   </video>
   <video class="video-sphere" loop muted="muted" crossOrigin="anonymous" playsinline style="display: none;" >
-    <source src="https://theopaolo.com/nhvideos/etoilefilante.mp4" type='video/mp4' >
+    <source src="https://theopaolo-com.mon.world/nhvideos/etoilefilante.mp4" type='video/mp4' >
   </video>
   <video class="video-sphere" loop muted="muted" crossOrigin="anonymous" playsinline style="display: none;" >
-    <source src="https://theopaolo.com/nhvideos/volcano.mp4" type='video/mp4' >
+    <source src="https://theopaolo-com.mon.world/nhvideos/volcano.mp4" type='video/mp4' >
   </video>
   <video class="video-sphere" loop muted="muted" crossOrigin="anonymous" playsinline style="display: none;" >
-    <source src="https://theopaolo.com/nhvideos/saturne.mp4" type='video/mp4' >
+    <source src="https://theopaolo-com.mon.world/nhvideos/saturne.mp4" type='video/mp4' >
   </video>
 </section>
 
@@ -103,10 +103,10 @@
 
 <main id="swup" class="transition-fade">
   <section>
-    <?php snippet('mobnav') ?>
+    <?php snippet("mobnav"); ?>
   </section>
 </main>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.0/gsap.min.js"></script>
-<?= js('assets/dist/js/app.js') ?>
-<?php snippet('footer') ?>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.4/gsap.min.js"></script>
+<?= js("assets/dist/js/app.js") ?>
+<?php snippet("footer"); ?>

@@ -1,0 +1,17 @@
+name: field.blocks.video.name
+icon: video
+preview: video
+fields:
+  video:
+    label: field.blocks.video.name
+    type: files
+    query: model.videos
+    multiple: false
+    video:
+      back: black
+    uploads:
+      template: blocks/video
+  alt:
+    label: field.blocks.video.alt
+    type: text
+    icon: title

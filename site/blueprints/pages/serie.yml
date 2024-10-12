@@ -45,6 +45,7 @@ tabs:
               - "1/2, 1/2"
             fieldsets:
               - image
+              - video
             settings:
               fields:
                 presentation:
@@ -59,6 +60,7 @@ tabs:
           video:
             label: Video
             type: url
+
   imagestab:
     label: Images
     sections:
