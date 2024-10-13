@@ -26,6 +26,7 @@
 
           <!-- <span><?= $site->audiobtn()->text() ?></span> -->
         </div>
+
         <div class="fullscreenbtn">
           <svg aria-hidden="true" class="fullscreen-icon" width="100" height="100" viewBox="-10 -10 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" role="button" aria-label="Fullscreen Icon">
             <path d="M3.30103 100.109L23.641 79.3391L20.0707 75.8391L-0.28127 96.6201L0.21092 78.1001L-4.30078 77.9868L-5 104.999L22 103.737L21.7891 99.2371L3.30103 100.109Z" fill="black"/>

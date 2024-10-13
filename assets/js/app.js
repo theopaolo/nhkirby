@@ -198,27 +198,175 @@ function handleWindowResizeRAF() {
     }
 }
 
-function handleIntroButtonClick(event) {
-    hideIntro();
-    zoomIn();
+// AUDIO
+const PLAY_BUTTON = document.querySelector('.soundbtn');
+const AUDIO = document.querySelector('audio');
+let audioContext;
+let sourceNode;
+let gainNode;
 
-    if (AUDIO) {
-      PLAY_BUTTON.classList.add("active");
-      AUDIO.play().catch((error) => {
-            console.error("Failed to play audio:", error);
-        });
-    }
-}
+function initializeAudio() {
 
-function handlePlayButton() {
-  if (!AUDIO.paused) {
-    PLAY_BUTTON.classList.remove("active");
-    AUDIO.pause();
-  } else {
-    AUDIO.play();
-    PLAY_BUTTON.classList.add("active");
+  if (AUDIO && PLAY_BUTTON) {
+      setupWebAudio();
+      loadAudioState();
+      PLAY_BUTTON.addEventListener("click", handlePlayButton);
   }
 }
+
+function setupWebAudio() {
+  audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  sourceNode = audioContext.createMediaElementSource(AUDIO);
+  gainNode = audioContext.createGain();
+  sourceNode.connect(gainNode);
+  gainNode.connect(audioContext.destination);
+}
+
+function fadeAudioOut(duration = 0.5) {
+  return new Promise(resolve => {
+      if (gainNode) {
+          const currentTime = audioContext.currentTime;
+          gainNode.gain.setValueAtTime(gainNode.gain.value, currentTime);
+          gainNode.gain.linearRampToValueAtTime(0, currentTime + duration);
+          setTimeout(resolve, duration * 1000);
+      } else {
+          resolve();
+      }
+  });
+}
+
+function fadeAudioIn(duration = 0.5) {
+  if (gainNode) {
+      const currentTime = audioContext.currentTime;
+      gainNode.gain.setValueAtTime(0, currentTime);
+      gainNode.gain.linearRampToValueAtTime(1, currentTime + duration);
+  }
+}
+
+function saveAudioTime() {
+  if (AUDIO) {
+      localStorage.setItem('audioTime', AUDIO.currentTime);
+  }
+}
+
+function savePlayState() {
+  localStorage.setItem('audioPlaying', audioPlaying);
+}
+
+function loadPlayState() {
+  let savedState = localStorage.getItem('audioPlaying');
+  return savedState === 'true';
+}
+
+function loadAudioTime() {
+  let savedTime = localStorage.getItem('audioTime');
+  if (savedTime !== null && AUDIO) {
+      AUDIO.currentTime = parseFloat(savedTime);
+  }
+}
+
+async function loadAudioState() {
+  loadAudioTime();
+  audioPlaying = loadPlayState();
+
+  if (audioPlaying && AUDIO && PLAY_BUTTON) {
+      PLAY_BUTTON.classList.add("active");
+      try {
+          await AUDIO.play();
+          fadeAudioIn();
+      } catch (error) {
+          console.error("Failed to play audio:", error);
+          audioPlaying = false;
+          PLAY_BUTTON.classList.remove("active");
+          savePlayState();
+      }
+  } else if (AUDIO && PLAY_BUTTON) {
+      AUDIO.pause();
+      PLAY_BUTTON.classList.remove("active");
+  }
+}
+
+async function handleIntroButtonClick(event) {
+  localStorage.setItem('entered', 'true');
+  hideIntro();
+  zoomIn();
+  loadAudioTime();
+  if (AUDIO && PLAY_BUTTON) {
+      PLAY_BUTTON.classList.add("active");
+      try {
+          await AUDIO.play();
+          fadeAudioIn();
+          audioPlaying = true;
+          savePlayState();
+      } catch (error) {
+          console.error("Failed to play audio:", error);
+          audioPlaying = false;
+          PLAY_BUTTON.classList.remove("active");
+          savePlayState();
+      }
+  }
+}
+
+async function handlePlayButton() {
+  if (AUDIO) {
+      if (!AUDIO.paused) {
+          await fadeAudioOut();
+          AUDIO.pause();
+          PLAY_BUTTON.classList.remove("active");
+          audioPlaying = false;
+      } else {
+          try {
+              await AUDIO.play();
+              fadeAudioIn();
+              PLAY_BUTTON.classList.add("active");
+              audioPlaying = true;
+          } catch (error) {
+              console.error("Failed to play audio:", error);
+              audioPlaying = false;
+          }
+      }
+      savePlayState();
+  }
+}
+
+function checkIntroState() {
+  const hasEntered = localStorage.getItem('entered') === 'true';
+  const introElement = document.querySelector('.introduction');
+  if (hasEntered && introElement) {
+      introElement.classList.add('d-none');
+      loadAudioState();
+  }
+}
+
+
+// Initialize audio on page load
+document.addEventListener('DOMContentLoaded', () => {
+  initializeAudio();
+  checkIntroState();
+});
+
+// Save audio time periodically
+setInterval(saveAudioTime, 1000);
+
+// Save audio state before page unload
+window.addEventListener('beforeunload', function() {
+  saveAudioTime();
+  savePlayState();
+});
+
+PLAY_BUTTON.addEventListener("click", handlePlayButton);
+
+// Handle page transitions
+document.addEventListener('swup:willReplaceContent', async () => {
+  await fadeAudioOut();
+  saveAudioTime();
+  savePlayState();
+});
+
+document.addEventListener('swup:contentReplaced', () => {
+  initializeAudio();
+  checkIntroState();
+});
 
 function handleFullScreen() {
   if (!document.fullscreenElement) {
@@ -300,15 +448,13 @@ initSwup(() => {
 });
 
 // Event Listeners
-const PLAY_BUTTON = document.querySelector('.soundbtn');
-const AUDIO = document.querySelector('audio');
+
 const EXPLORE_BUTTON = document.querySelector('.expbtn');
 const INTRO_BUTTONS = document.querySelectorAll('.btnintro');
 const FULLSCREEN_BUTTON = document.querySelector('.fullscreenbtn');
 
 EXPLORE_BUTTON.addEventListener("click", handleExploreButtonClick);
 INTRO_BUTTONS.forEach(btn => btn.addEventListener("click", handleIntroButtonClick));
-PLAY_BUTTON.addEventListener("click", handlePlayButton);
 
 if (FULLSCREEN_BUTTON) {
   FULLSCREEN_BUTTON.addEventListener('click', handleFullScreen);

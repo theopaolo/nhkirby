@@ -142,10 +142,10 @@
       this[globalName] = mainExports;
     }
   }
-})({"dItwV":[function(require,module,exports) {
+})({"7eoOY":[function(require,module,exports) {
 var global = arguments[3];
 var HMR_HOST = null;
-var HMR_PORT = 62196;
+var HMR_PORT = 1234;
 var HMR_SECURE = false;
 var HMR_ENV_HASH = "d6ea1d42532a7575";
 module.bundle.HMR_BUNDLE_ID = "061eebfa9d09263a";
@@ -729,25 +729,146 @@ function handleWindowResizeRAF() {
         });
     }
 }
-function handleIntroButtonClick(event) {
+// AUDIO
+const PLAY_BUTTON = document.querySelector(".soundbtn");
+const AUDIO = document.querySelector("audio");
+let audioContext;
+let sourceNode;
+let gainNode;
+function initializeAudio() {
+    if (AUDIO && PLAY_BUTTON) {
+        setupWebAudio();
+        loadAudioState();
+        PLAY_BUTTON.addEventListener("click", handlePlayButton);
+    }
+}
+function setupWebAudio() {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    sourceNode = audioContext.createMediaElementSource(AUDIO);
+    gainNode = audioContext.createGain();
+    sourceNode.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+}
+function fadeAudioOut(duration = 0.5) {
+    return new Promise((resolve)=>{
+        if (gainNode) {
+            const currentTime = audioContext.currentTime;
+            gainNode.gain.setValueAtTime(gainNode.gain.value, currentTime);
+            gainNode.gain.linearRampToValueAtTime(0, currentTime + duration);
+            setTimeout(resolve, duration * 1000);
+        } else resolve();
+    });
+}
+function fadeAudioIn(duration = 0.5) {
+    if (gainNode) {
+        const currentTime = audioContext.currentTime;
+        gainNode.gain.setValueAtTime(0, currentTime);
+        gainNode.gain.linearRampToValueAtTime(1, currentTime + duration);
+    }
+}
+function saveAudioTime() {
+    if (AUDIO) localStorage.setItem("audioTime", AUDIO.currentTime);
+}
+function savePlayState() {
+    localStorage.setItem("audioPlaying", audioPlaying);
+}
+function loadPlayState() {
+    let savedState = localStorage.getItem("audioPlaying");
+    return savedState === "true";
+}
+function loadAudioTime() {
+    let savedTime = localStorage.getItem("audioTime");
+    if (savedTime !== null && AUDIO) AUDIO.currentTime = parseFloat(savedTime);
+}
+async function loadAudioState() {
+    loadAudioTime();
+    audioPlaying = loadPlayState();
+    if (audioPlaying && AUDIO && PLAY_BUTTON) {
+        PLAY_BUTTON.classList.add("active");
+        try {
+            await AUDIO.play();
+            fadeAudioIn();
+        } catch (error) {
+            console.error("Failed to play audio:", error);
+            audioPlaying = false;
+            PLAY_BUTTON.classList.remove("active");
+            savePlayState();
+        }
+    } else if (AUDIO && PLAY_BUTTON) {
+        AUDIO.pause();
+        PLAY_BUTTON.classList.remove("active");
+    }
+}
+async function handleIntroButtonClick(event) {
+    localStorage.setItem("entered", "true");
     hideIntro();
     zoomIn();
-    if (AUDIO) {
+    loadAudioTime();
+    if (AUDIO && PLAY_BUTTON) {
         PLAY_BUTTON.classList.add("active");
-        AUDIO.play().catch((error)=>{
+        try {
+            await AUDIO.play();
+            fadeAudioIn();
+            audioPlaying = true;
+            savePlayState();
+        } catch (error) {
             console.error("Failed to play audio:", error);
-        });
+            audioPlaying = false;
+            PLAY_BUTTON.classList.remove("active");
+            savePlayState();
+        }
     }
 }
-function handlePlayButton() {
-    if (!AUDIO.paused) {
-        PLAY_BUTTON.classList.remove("active");
-        AUDIO.pause();
-    } else {
-        AUDIO.play();
-        PLAY_BUTTON.classList.add("active");
+async function handlePlayButton() {
+    if (AUDIO) {
+        if (!AUDIO.paused) {
+            await fadeAudioOut();
+            AUDIO.pause();
+            PLAY_BUTTON.classList.remove("active");
+            audioPlaying = false;
+        } else try {
+            await AUDIO.play();
+            fadeAudioIn();
+            PLAY_BUTTON.classList.add("active");
+            audioPlaying = true;
+        } catch (error) {
+            console.error("Failed to play audio:", error);
+            audioPlaying = false;
+        }
+        savePlayState();
     }
 }
+function checkIntroState() {
+    const hasEntered = localStorage.getItem("entered") === "true";
+    const introElement = document.querySelector(".introduction");
+    if (hasEntered && introElement) {
+        introElement.classList.add("d-none");
+        loadAudioState();
+    }
+}
+// Initialize audio on page load
+document.addEventListener("DOMContentLoaded", ()=>{
+    initializeAudio();
+    checkIntroState();
+});
+// Save audio time periodically
+setInterval(saveAudioTime, 1000);
+// Save audio state before page unload
+window.addEventListener("beforeunload", function() {
+    saveAudioTime();
+    savePlayState();
+});
+PLAY_BUTTON.addEventListener("click", handlePlayButton);
+// Handle page transitions
+document.addEventListener("swup:willReplaceContent", async ()=>{
+    await fadeAudioOut();
+    saveAudioTime();
+    savePlayState();
+});
+document.addEventListener("swup:contentReplaced", ()=>{
+    initializeAudio();
+    checkIntroState();
+});
 function handleFullScreen() {
     if (!document.fullscreenElement) {
         FULLSCREEN_BUTTON.classList.add("active");
@@ -819,14 +940,11 @@ const renderer = initRenderer(canvas);
     (0, _scriptManager.initScripts)();
 });
 // Event Listeners
-const PLAY_BUTTON = document.querySelector(".soundbtn");
-const AUDIO = document.querySelector("audio");
 const EXPLORE_BUTTON = document.querySelector(".expbtn");
 const INTRO_BUTTONS = document.querySelectorAll(".btnintro");
 const FULLSCREEN_BUTTON = document.querySelector(".fullscreenbtn");
 EXPLORE_BUTTON.addEventListener("click", handleExploreButtonClick);
 INTRO_BUTTONS.forEach((btn)=>btn.addEventListener("click", handleIntroButtonClick));
-PLAY_BUTTON.addEventListener("click", handlePlayButton);
 if (FULLSCREEN_BUTTON) FULLSCREEN_BUTTON.addEventListener("click", handleFullScreen);
 // Event listeners
 window.addEventListener("resize", handleWindowResizeRAF);
@@ -31316,7 +31434,6 @@ function initMouseHandler(canvas, camera, imgObjects, videoObjects) {
     const raycaster = new _three.Raycaster();
     const mouse = new _three.Vector2();
     let currentIntersect = null;
-    let previousIntersect = null;
     // SVG cursor for the "plus" icon
     const plusIcon = `
     <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="14" height="14" viewBox="0 0 14 14">
@@ -31355,19 +31472,9 @@ function initMouseHandler(canvas, camera, imgObjects, videoObjects) {
         const intersects = raycaster.intersectObjects(allObjects);
         if (intersects.length) {
             currentIntersect = intersects[0];
-            // If there's a previous intersect and it's different, reset the previous one's color
-            if (previousIntersect && previousIntersect !== currentIntersect) previousIntersect.object.material.color.set(0xffffff); // Reset previous color to white (or original)
-            // Change the color of the current intersected object
-            if (currentIntersect.object.material) currentIntersect.object.material.color.set(0x800000); // Set color to dark red
             document.body.style.cursor = `url('${iconPlusUrl}'), auto`;
-            // Update the previous intersect
-            previousIntersect = currentIntersect;
         } else {
-            // If no intersect is found, reset the color of the previously intersected object
-            if (previousIntersect) {
-                previousIntersect.object.material.color.set(0xffffff); // Reset previous color to white
-                previousIntersect = null;
-            }
+            currentIntersect = null;
             document.body.style.cursor = "grab";
         }
     };
@@ -32053,6 +32160,6 @@ function initializeStarrySky(starsCanvas) {
     });
 }
 
-},{"@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI"}]},["dItwV","6Bv9J"], "6Bv9J", "parcelRequire94c2")
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI"}]},["7eoOY","6Bv9J"], "6Bv9J", "parcelRequire94c2")
 
 //# sourceMappingURL=app.js.map

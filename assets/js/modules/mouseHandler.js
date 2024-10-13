@@ -1,13 +1,12 @@
-import * as THREE from 'three';
+import * as THREE from "three";
 
 export function initMouseHandler(canvas, camera, imgObjects, videoObjects) {
-    const raycaster = new THREE.Raycaster();
-    const mouse = new THREE.Vector2();
-    let currentIntersect = null;
-    let previousIntersect = null;
+  const raycaster = new THREE.Raycaster();
+  const mouse = new THREE.Vector2();
+  let currentIntersect = null;
 
-    // SVG cursor for the "plus" icon
-    const plusIcon = `
+  // SVG cursor for the "plus" icon
+  const plusIcon = `
     <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="14" height="14" viewBox="0 0 14 14">
       <defs>
         <clipPath id="clip-Curseur_">
@@ -23,56 +22,36 @@ export function initMouseHandler(canvas, camera, imgObjects, videoObjects) {
     </svg>
     `;
 
-    const plusBlob = new Blob([plusIcon], { type: 'image/svg+xml' });
-    const iconPlusUrl = URL.createObjectURL(plusBlob);
+  const plusBlob = new Blob([plusIcon], { type: "image/svg+xml" });
+  const iconPlusUrl = URL.createObjectURL(plusBlob);
 
-    // Update the mouse position
-    const handleMouseMove = (event) => {
-        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-    };
+  // Update the mouse position
+  const handleMouseMove = (event) => {
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  };
 
-    // Update raycasting based on the current mouse position
-    const updateIntersect = () => {
-        raycaster.setFromCamera(mouse, camera);
+  // Update raycasting based on the current mouse position
+  const updateIntersect = () => {
+    raycaster.setFromCamera(mouse, camera);
 
-        // Combine both image and video objects for raycasting
-        const allObjects = [...imgObjects, ...videoObjects];
-        const intersects = raycaster.intersectObjects(allObjects);
+    // Combine both image and video objects for raycasting
+    const allObjects = [...imgObjects, ...videoObjects];
+    const intersects = raycaster.intersectObjects(allObjects);
 
-        if (intersects.length) {
-            currentIntersect = intersects[0];
+    if (intersects.length) {
+      currentIntersect = intersects[0];
+      document.body.style.cursor = `url('${iconPlusUrl}'), auto`;
+    } else {
+      currentIntersect = null;
+      document.body.style.cursor = "grab";
+    }
+  };
 
-            // If there's a previous intersect and it's different, reset the previous one's color
-            if (previousIntersect && previousIntersect !== currentIntersect) {
-                previousIntersect.object.material.color.set(0xffffff);  // Reset previous color to white (or original)
+  window.addEventListener("mousemove", handleMouseMove);
 
-            }
-
-            // Change the color of the current intersected object
-            if (currentIntersect.object.material) {
-                currentIntersect.object.material.color.set(0x800000);  // Set color to dark red
-            }
-
-            document.body.style.cursor = `url('${iconPlusUrl}'), auto`;
-
-            // Update the previous intersect
-            previousIntersect = currentIntersect;
-        } else {
-            // If no intersect is found, reset the color of the previously intersected object
-            if (previousIntersect) {
-                previousIntersect.object.material.color.set(0xffffff);  // Reset previous color to white
-                previousIntersect = null;
-            }
-
-            document.body.style.cursor = "grab";
-        }
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-
-    return {
-        updateIntersect,
-        getCurrentIntersect: () => currentIntersect,  // Return the current intersected object, if any
-    };
+  return {
+    updateIntersect,
+    getCurrentIntersect: () => currentIntersect, // Return the current intersected object, if any
+  };
 }

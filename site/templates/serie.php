@@ -108,11 +108,35 @@ $fullheight = $page->marges()->toBool(); // Corrected variable name from $fullhe
           </section>
         <?php endif ?>
 
+        <div class="soundbtn" style="position: fixed; bottom:1rem;">
+          <!-- <div class="wave">
+            <span></span><span></span><span></span><span></span><span></span><span></span>
+          </div> -->
 
+          <div class="playpausebtn">
+            <svg class="play-icon" aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M3.5 3.80902L19.882 12L3.5 20.191L3.5 3.80902Z" stroke="#a1a1a1"/>
+            </svg>
+
+            <svg class="pause-icon" aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="4.5" y="3.5" width="5" height="17" stroke="#a1a1a1"/>
+              <rect x="14.5" y="3.5" width="5" height="17" stroke="#a1a1a1"/>
+            </svg>
+          </div>
+
+          <!-- <span><?= $site->audiobtn()->text() ?></span> -->
+        </div>
+    <?php if ($sound = $site->fondsonore()->toFile()): ?>
+<audio loop>
+  <source src="<?= $sound->url() ?>" type="<?= $sound->mime() ?>">
+</audio>
+<?php endif; ?>
       </section>
     </section>
+
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.4/gsap.min.js"></script>
 <?= js('assets/js/series.js') ?>
+
 <?php snippet('footer') ?>
