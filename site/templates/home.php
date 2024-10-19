@@ -7,7 +7,24 @@
       <h1 class="z-index-4 expbtn">Nicolas Hermann</h1>
       <span class="cpar"></span>
 
-      <div class="flex gap-4">
+      <div class="flex gap-4 items-center">
+          <div>
+          <?php
+          $i = 0;
+          foreach ($kirby->languages() as $language):
+              $i++; ?>
+          <a <?php e($kirby->language() == $language, ' class="active"'); ?>
+              href="<?= $language->url() ?>"
+              hreflang="<?= $language->code() ?>" data-no-swup>
+            <?= html($language->code()) ?>
+          </a>
+          <?php if ($i < count($kirby->languages())): ?>
+            <span class="separator">|</span>
+          <?php endif; ?>
+          <?php
+          endforeach;
+          ?>
+          </div>
         <div class="soundbtn">
           <!-- <div class="wave">
             <span></span><span></span><span></span><span></span><span></span><span></span>

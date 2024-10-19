@@ -20,14 +20,21 @@
     ->title() ?></a></li>
 
     <li>
-        <?php foreach ($kirby->languages() as $language): ?>
-        <a <?php e(
-            $kirby->language() == $language,
-            ' class="active"'
-        ); ?> href="<?php echo $language->url(); ?>" hreflang="<?php echo $language->code(); ?>" data-no-swup>
-          <?php echo html($language->code()); ?>
-        </a>
-        <?php endforeach; ?>
+        <?php
+        $i = 0;
+        foreach ($kirby->languages() as $language):
+            $i++; ?>
+            <a <?php e($kirby->language() == $language, ' class="active"'); ?>
+                href="<?= $language->url() ?>"
+                hreflang="<?= $language->code() ?>" data-no-swup>
+                <?= html($language->code()) ?>
+            </a>
+            <?php if ($i < count($kirby->languages())): ?>
+                <span class="separator">|</span>
+            <?php endif; ?>
+        <?php
+        endforeach;
+        ?>
     </li>
 
   </ul>
