@@ -460,7 +460,7 @@ a:hover {
 }
 
 .introduction {
-    opacity: 0.9;
+    opacity: 0;
     top: 0;
     height: 100dvh;
     width: 100dvw;
@@ -1059,7 +1059,7 @@ section picture {
     left: 0rem;
     padding: 1rem;
     font-size: 2rem;
-    z-index: 9999999;
+    z-index: 9999;
     transition: all 0.3s ease-in-out;
 }
 
@@ -1147,7 +1147,8 @@ section picture {
 
 .langs button {
     border: 1px solid;
-    padding: 0.25rem 0.5rem;
+    padding: .5rem;
+    height: fit-content;
 }
 
 .langs button:hover {
@@ -1165,6 +1166,10 @@ section picture {
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
+}
+
+.counter {
+text-align: center;
 }
 
 @media screen and (min-width: 745px) {
@@ -1386,8 +1391,6 @@ section picture {
     }
 
     .introduction {
-        flex-direction: column-reverse;
-        justify-content: flex-end;
         z-index: 99999;
     }
 

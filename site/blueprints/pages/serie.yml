@@ -11,7 +11,7 @@ tabs:
           titre:
             label: Titre de la serie
             type:  text
-            width: 2/4
+            width: 3/4
           bgdark:
             label: Fond de la série
             type:  toggle
@@ -20,14 +20,14 @@ tabs:
               - noir
             help: Blanc par défaut
             width: 1/4
-          justification:
-            label: Justification
-            type:  toggle
-            text:
-              - Justifier
-              - Normal
-            help: Justifier par défaut
-            width: 1/4
+          # justification:
+          #   label: Justification
+          #   type:  toggle
+          #   text:
+          #     - Justifier
+          #     - Normal
+          #   help: Justifier par défaut
+          #   width: 1/4
           # marges:
           #   label: Marges
           #   type:  toggle

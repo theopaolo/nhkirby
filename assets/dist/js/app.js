@@ -797,7 +797,7 @@ async function loadAudioState() {
     }
 }
 async function handleIntroButtonClick(e) {
-    localStorage.setItem("entered", "false");
+    localStorage.setItem("entered", "true");
     hideIntro();
     zoomIn();
     loadAudioTime();
@@ -841,7 +841,11 @@ function checkIntroState() {
     if (hasEntered && introElement) {
         introElement.classList.add("d-none");
         loadAudioState();
-    }
+    } else gsap.to(".introduction", {
+        opacity: 1,
+        display: "grid",
+        duration: 0.3
+    });
 }
 // Initialize audio on page load
 document.addEventListener("DOMContentLoaded", ()=>{

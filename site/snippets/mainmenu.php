@@ -14,6 +14,23 @@
           </li>
         <?php endforeach ?>
       </ul>
-      <a class="main-item" href="<?= $site->page("about")->url()?>"><?= $site->page("about")->title()?></a>
+      <div class="main-item">
+      <a href="<?= $site->page("about")->url()?>"><?= $site->page("about")->title()?></a>
+      <?php
+        $i = 0;
+        foreach ($kirby->languages() as $language):
+            $i++; ?>
+            <a <?php e($kirby->language() == $language, ' class="active"'); ?>
+                href="<?= $language->url() ?>"
+                hreflang="<?= $language->code() ?>" data-no-swup>
+                <?= html($language->code()) ?>
+            </a>
+            <?php if ($i < count($kirby->languages())): ?>
+                <span class="separator">|</span>
+            <?php endif; ?>
+        <?php
+        endforeach;
+        ?>
+      </div>
   </div>
 </nav>

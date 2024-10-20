@@ -6,6 +6,7 @@
       <span class="close"></span>
     </a>
     <?php snippet('mobnav') ?>
+    <?php snippet("mainmenu"); ?>
 
     <div class="about-grid">
       <div class="bio darkbg">
