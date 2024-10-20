@@ -1,5 +1,5 @@
-<button class="nav-action">+</button>
-<nav class="offscreen-nav">
+<button class="nav-action nav-toggler">+</button>
+<!-- <nav class="offscreen-nav">
   <div class="navwrap">
     <span class="nav-name"><a href="<?= $site->url()?>">Nicolas Hermann</a></span>
     <div class="flex dir-column">
@@ -10,4 +10,4 @@
     </div>
     <a class="nav-about" href="<?= $site->page("about")->url()?>"><?= $site->page("about")->title()?></a>
   </div>
-</nav>
+</nav> -->

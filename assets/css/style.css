@@ -109,6 +109,11 @@ button {
     mix-blend-mode: difference;
     z-index: 9999;
 }
+
+.desk-nav li{
+  min-width: max-content;
+}
+
 .desk-nav a {
     padding: 1rem 0;
 }
@@ -146,6 +151,55 @@ button {
 .laniakea section .column {
     height: 100vh;
     width: 100%;
+}
+/* MAIN NAV */
+.main-nav {
+    display: none;
+    opacity: 0;
+    place-content: center;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 99;
+    text-align: center;
+    background-color: var(--dark-color);
+    height: 100svh;
+}
+
+.main-nav .main-item {
+  display:none;
+}
+
+.main-nav div > ul {
+  overflow-y: auto;
+  margin: 1rem 0;
+}
+
+.main-nav div > ul > li:not(:last-child){
+  margin-bottom: 1.5rem;
+}
+
+.main-nav > div {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-transform: uppercase;
+    width: 100%;
+    text-align: center;
+    height: 88svh;
+}
+
+.main-nav h2 {
+    color: var(--light-color);
+    text-transform: uppercase;
+    margin-bottom: .5rem;
+}
+
+.main-nav li > ul li:not(:last-child) {
+  text-transform: uppercase;
+  margin-bottom: .5rem;
 }
 
 /* HOME PAGE */
@@ -196,7 +250,7 @@ a:hover {
 /* Button animation*/
 .fullscreen-icon {
     width: 20px;
-    height: 20 px;
+    height: 20px;
     cursor: pointer;
 }
 
@@ -655,7 +709,7 @@ a:hover {
     text-transform: uppercase;
     mix-blend-mode: difference;
     pointer-events: none;
-    padding: 2rem 0;
+    /* padding: 2rem 0; */
     text-shadow: 0 0 2px #a1a1a1;
 }
 
@@ -1015,10 +1069,6 @@ section picture {
     left: unset;
 }
 
-.nav-active {
-    transform: rotate(45deg);
-}
-
 .nav-active .nav-action {
     transform: rotate(45deg);
 }
@@ -1077,7 +1127,6 @@ section picture {
 
 .nav-visible {
     display: flex;
-    transition: all 0.3s ease-in-out;
 }
 
 .mob-show {
@@ -1097,7 +1146,6 @@ section picture {
 }
 
 .langs button {
-    margin-block-start: 2rem;
     border: 1px solid;
     padding: 0.25rem 0.5rem;
 }
@@ -1120,6 +1168,7 @@ section picture {
 }
 
 @media screen and (min-width: 745px) {
+
     .about-grid {
         max-height: 100vh;
         height: 100vh;
@@ -1206,14 +1255,12 @@ section picture {
     }
 
     .langs {
-        position: absolute;
-        height: 100%;
-        width: 50vw;
-        display: grid;
-        justify-content: center;
-        padding: 0 2rem;
-        gap: 4rem;
-        right: 0;
+      position: absolute;
+      height: 100%;
+      display: grid;
+      padding: 1rem;
+      align-content: center;
+      align-items: center;;
     }
 
     .serie-grid .column {
@@ -1317,12 +1364,17 @@ section picture {
 }
 
 @media screen and (max-width: 744px) {
-    .home-body {
-        background-color: #0d0d0d;
+    .main-nav .main-item {
+      display: block;
     }
 
-    canvas {
-        transform: translateY(-1.5rem);
+    .main-nav > div {
+      justify-content: space-between;
+      height: 65svh;
+    }
+
+    .home-body {
+        background-color: #0d0d0d;
     }
 
     .mob-hide {
@@ -1374,7 +1426,7 @@ section picture {
     }
 
     .exp .namecount {
-        height: 70vh;
+        height: 75vh;
     }
 
     .grid-col-2 {
@@ -1405,7 +1457,7 @@ section picture {
 
     .namecount {
         height: 100%;
-        padding: 3rem 0;
+        /* padding: 3rem 0; */
         padding-top: 0;
         place-content: space-between;
         position: absolute;
@@ -1461,6 +1513,8 @@ section picture {
         text-shadow: 0 0 2px #a1a1a1;
     }
 }
+
+
 
 @media screen and (max-width: 768px) {
     .namecount {

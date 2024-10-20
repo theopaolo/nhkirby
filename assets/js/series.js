@@ -1,113 +1,129 @@
+import { handleFullScreen } from "./modules/handleFullscreen.js";
+const FULLSCREEN_BUTTON = document.querySelector(".fullscreenbtn");
+if (FULLSCREEN_BUTTON) {
+  FULLSCREEN_BUTTON.addEventListener("click", () =>
+    handleFullScreen(FULLSCREEN_BUTTON),
+  );
+}
 const gsap = window.gsap;
-let nextBtn = document.querySelector('.next')
-let prevBtn = document.querySelector('.prev')
-let slides = document.querySelectorAll(".slides")
+let nextBtn = document.querySelector(".next");
+let prevBtn = document.querySelector(".prev");
+let slides = document.querySelectorAll(".slides");
 
-let slidesCount = slides.length
-let slidesIndex = 1
+let slidesCount = slides.length;
+let slidesIndex = 1;
 
 // Counter
-let allimgcount = document.querySelector(".allcount")
-let firstall = document.querySelector(".firstall")
-let currentimgcount = document.querySelector(".currentcount")
-let twoimgs = document.querySelectorAll(".two-img")
+let allimgcount = document.querySelector(".allcount");
+let firstall = document.querySelector(".firstall");
+let currentimgcount = document.querySelector(".currentcount");
+let twoimgs = document.querySelectorAll(".two-img");
 let isLightboxOpen = false;
-if(window.innerWidth < 768) {
-  if(twoimgs.length > 0) {
-    twoimgs.forEach( function(el) {
+if (window.innerWidth < 768) {
+  if (twoimgs.length > 0) {
+    twoimgs.forEach(function (el) {
       el.parentNode.removeChild(el);
-    })
+    });
   }
 }
 
 showSlides(slidesIndex);
 
-window.addEventListener("load", nameCountHeight)
-window.addEventListener('resize', nameCountHeight)
+window.addEventListener("load", nameCountHeight);
+window.addEventListener("resize", nameCountHeight);
 
 function scrollTop() {
   window.scrollTo(0, 0);
 }
 
 function nameCountHeight() {
-  let overlay = document.querySelector('.overlay')
-  overlay.style.opacity = 0
-  setTimeout(() => {overlay.style.display = "none"}, 1000)
+  let overlay = document.querySelector(".overlay");
+  overlay.style.opacity = 0;
+  setTimeout(() => {
+    overlay.style.display = "none";
+  }, 1000);
 
-  if(window.innerWidth < 745){
-    document.body.classList.add('firstSlide')
+  if (window.innerWidth < 745) {
+    document.body.classList.add("firstSlide");
     console.log(slidesIndex);
-    if(slidesIndex > 1) {
-      document.body.classList.remove('firstSlide')
+    if (slidesIndex > 1) {
+      document.body.classList.remove("firstSlide");
     }
-    if(slidesIndex === 2) {
-      scrollTop()
+    if (slidesIndex === 2) {
+      scrollTop();
     }
   } else {
-    document.body.classList.remove('firstSlide')
+    document.body.classList.remove("firstSlide");
   }
 }
 
-window.addEventListener("keydown", function(event) {
-  if (event.defaultPrevented) {
-    return;
-  }
+window.addEventListener(
+  "keydown",
+  function (event) {
+    if (event.defaultPrevented) {
+      return;
+    }
 
-  if (isLightboxOpen) {
-    switch(event.code) {
-      case "ArrowLeft":
-        navigateLightbox(-1);
-        break;
-      case "ArrowRight":
-        navigateLightbox(1);
-        break;
-      case "Escape":
-        closeLighterbox();
-        break;
+    if (isLightboxOpen) {
+      switch (event.code) {
+        case "ArrowLeft":
+          navigateLightbox(-1);
+          break;
+        case "ArrowRight":
+          navigateLightbox(1);
+          break;
+        case "Escape":
+          closeLighterbox();
+          break;
+      }
+      event.preventDefault();
+    } else {
+      switch (event.code) {
+        case "ArrowLeft":
+          plusSlides(-1);
+          break;
+        case "ArrowRight":
+          plusSlides(1);
+          break;
+      }
+      event.preventDefault();
     }
-    event.preventDefault();
-  } else {
-    switch(event.code) {
-      case "ArrowLeft":
-        plusSlides(-1);
-        break;
-      case "ArrowRight":
-        plusSlides(1);
-        break;
-    }
-    event.preventDefault();
-  }
-}, true);
+  },
+  true,
+);
 
 // Next/previous controls
 function plusSlides(n) {
-  showSlides(slidesIndex += n);
-  nameCountHeight()
+  showSlides((slidesIndex += n));
+  nameCountHeight();
 }
 
-allimgcount.innerHTML = slidesCount
+allimgcount.innerHTML = slidesCount;
 
-
-  if(firstall) {
-    firstall.innerHTML = slidesCount
-  }
+if (firstall) {
+  firstall.innerHTML = slidesCount;
+}
 
 function showSlides(n) {
   slidesIndex = getValidSlideIndex(n);
   let i;
-  if (n > slidesCount) {slidesIndex = 1}
-  if (n < 1) {slidesIndex = slidesCount}
+  if (n > slidesCount) {
+    slidesIndex = 1;
+  }
+  if (n < 1) {
+    slidesIndex = slidesCount;
+  }
 
   for (i = 0; i < slidesCount; i++) {
     slides[i].style.display = "none";
   }
 
-  if(slides[slidesIndex-1].classList.contains('center')) {
-    slides[slidesIndex-1].style.display = "flex";
+  if (slides[slidesIndex - 1].classList.contains("center")) {
+    slides[slidesIndex - 1].style.display = "flex";
   } else {
-    slides[slidesIndex-1].style.display = "grid";
+    slides[slidesIndex - 1].style.display = "grid";
   }
-  currentimgcount.innerHTML = slidesIndex
+  currentimgcount.innerHTML = slidesIndex;
 
   if (isLightboxOpen) {
     updateLightboxImage(slidesIndex);
@@ -115,7 +131,7 @@ function showSlides(n) {
 }
 
 function updateLightboxImage(slideIndex) {
-  const images = document.querySelectorAll('.gallery img');
+  const images = document.querySelectorAll(".gallery img");
   const imageIndex = slideIndex - 2; // Adjust for 0-based index and skipping first slide
 
   if (imageIndex >= 0 && imageIndex < images.length) {
@@ -124,15 +140,15 @@ function updateLightboxImage(slideIndex) {
   }
 }
 
-prevBtn.addEventListener('click', ()=>{
-  showSlides(slidesIndex += -1)
-  nameCountHeight()
-})
+prevBtn.addEventListener("click", () => {
+  showSlides((slidesIndex += -1));
+  nameCountHeight();
+});
 
-nextBtn.addEventListener('click', ()=>{
-  showSlides(slidesIndex += 1)
-  nameCountHeight()
-})
+nextBtn.addEventListener("click", () => {
+  showSlides((slidesIndex += 1));
+  nameCountHeight();
+});
 
 const controls = `
 <div class="plyr__controls">
@@ -159,10 +175,11 @@ const controls = `
 <button type="button" class="plyr__control plyr__control--overlaid" data-plyr="play" aria-pressed="false" aria-label="Play"><svg aria-hidden="true" focusable="false"><use xlink:href="#plyr-play"></use></svg><span class="plyr__sr-only">Play</span></button>
 `;
 
-document.addEventListener('DOMContentLoaded', () => {
-  const players = Array.from(document.querySelectorAll('.video-player')).map((p) => new Plyr(p, {controls}));
+document.addEventListener("DOMContentLoaded", () => {
+  const players = Array.from(document.querySelectorAll(".video-player")).map(
+    (p) => new Plyr(p, { controls }),
+  );
 });
-
 
 const lighterboxHTML = `
   <div id="lighterbox" class="lighterbox">
@@ -171,16 +188,16 @@ const lighterboxHTML = `
 `;
 
 // Add the lighterbox HTML to the body
-document.body.insertAdjacentHTML('beforeend', lighterboxHTML);
+document.body.insertAdjacentHTML("beforeend", lighterboxHTML);
 
 // Get references to the lighterbox elements
-const lighterbox = document.getElementById('lighterbox');
-const lighterboxImg = document.getElementById('lighterbox-img');
+const lighterbox = document.getElementById("lighterbox");
+const lighterboxImg = document.getElementById("lighterbox-img");
 
 // Create close button
 // Function to open the lighterbox
 function openLighterbox(imgElement) {
-  lighterbox.style.display = 'block';
+  lighterbox.style.display = "block";
   lighterboxImg.src = imgElement.src;
   lighterboxImg.dataset.currentImg = imgElement.dataset.index;
   isLightboxOpen = true;
@@ -192,12 +209,12 @@ function openLighterbox(imgElement) {
   gsap.to(lighterbox, {
     duration: 0.5,
     opacity: 1,
-    ease: "power2.inOut"
+    ease: "power2.inOut",
   });
 }
 
 function navigateLightbox(direction) {
-  const images = document.querySelectorAll('.gallery img');
+  const images = document.querySelectorAll(".gallery img");
   let newIndex = parseInt(lighterboxImg.dataset.currentImg) + direction;
 
   if (newIndex < 0) newIndex = images.length - 1;
@@ -220,17 +237,16 @@ function closeLighterbox() {
     opacity: 0,
     ease: "power2.inOut",
     onComplete: () => {
-      lighterbox.style.display = 'none';
+      lighterbox.style.display = "none";
       isLightboxOpen = false;
 
       // Ensure we're showing the correct slide in the main slideshow
       let currentImageIndex = parseInt(lighterboxImg.dataset.currentImg);
       let correctSlideIndex = currentImageIndex + 2; // +2 to account for 1-based index and text slide
       showSlides(correctSlideIndex);
-    }
+    },
   });
 }
-
 
 function getValidSlideIndex(index) {
   if (index < 1) return slidesCount;
@@ -240,10 +256,10 @@ function getValidSlideIndex(index) {
 
 // Add click event listeners to all gallery images
 const allImgs = document.querySelectorAll(".gallery img");
-allImgs.forEach((img,index) => {
+allImgs.forEach((img, index) => {
   img.dataset.index = index;
-  img.addEventListener('click', function() {
-    if (lighterbox.style.display === 'block') {
+  img.addEventListener("click", function () {
+    if (lighterbox.style.display === "block") {
       closeLighterbox();
     } else {
       openLighterbox(this);
@@ -252,80 +268,74 @@ allImgs.forEach((img,index) => {
 });
 
 // Close the lighterbox when clicking the Lightbox
-lighterboxImg.addEventListener('click', function(e) {
+lighterboxImg.addEventListener("click", function (e) {
   closeLighterbox();
 });
 
-
 // Add keyboard support (Esc to close)
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') {
+document.addEventListener("keydown", function (e) {
+  if (e.key === "Escape") {
     closeLighterbox();
   }
 });
 
-function loadAudioTime() {
-  let savedTime = localStorage.getItem('audioTime');
-  if (savedTime !== null) {
-      audioElement.currentTime = parseFloat(savedTime);
-  }
-}
-
-let playbtn = document.querySelector('.soundbtn');
-let audioElement = document.querySelector('audio'); // Corrected spelling
+let playbtn = document.querySelector(".soundbtn");
+let audioElement = document.querySelector("audio"); // Corrected spelling
 let audioPlaying = false;
 
 function saveAudioTime() {
-    localStorage.setItem('audioTime', audioElement.currentTime);
+  localStorage.setItem("audioTime", audioElement.currentTime);
 }
 
 function loadAudioTime() {
-    let savedTime = localStorage.getItem('audioTime');
-    if (savedTime !== null) {
-        audioElement.currentTime = parseFloat(savedTime);
-    }
+  let savedTime = localStorage.getItem("audioTime");
+  if (savedTime !== null) {
+    audioElement.currentTime = parseFloat(savedTime);
+  }
 }
 
 function savePlayState() {
-    localStorage.setItem('audioPlaying', audioPlaying);
+  localStorage.setItem("audioPlaying", audioPlaying);
 }
 
 function loadPlayState() {
-    let savedState = localStorage.getItem('audioPlaying');
-    return savedState === 'true';
+  let savedState = localStorage.getItem("audioPlaying");
+  return savedState === "true";
 }
 
 function playPauseAudio() {
-    if (audioPlaying) {
-        audioElement.pause();
-        audioPlaying = false;
-        playbtn.classList.remove("active");
-    } else {
-        audioElement.play();
-        audioPlaying = true;
-        playbtn.classList.add("active");
-    }
-    savePlayState();
-    console.log("ispaused", audioElement.paused);
+  if (audioPlaying) {
+    audioElement.pause();
+    audioPlaying = false;
+    playbtn.classList.remove("active");
+  } else {
+    audioElement.play();
+    audioPlaying = true;
+    playbtn.classList.add("active");
+  }
+  savePlayState();
+  console.log("ispaused", audioElement.paused);
 }
 
 audioElement.pause(); // Corrected variable name
 playbtn.addEventListener("click", playPauseAudio);
 setInterval(saveAudioTime, 1000);
 
-document.addEventListener('DOMContentLoaded', function() {
-    loadAudioTime();
-    audioPlaying = loadPlayState();
-    if (audioPlaying) {
-        audioElement.play().catch(e => console.error("Audio playback failed:", e));
-        playbtn.classList.add("active");
-    } else {
-        audioElement.pause();
-        playbtn.classList.remove("active");
-    }
+document.addEventListener("DOMContentLoaded", function () {
+  loadAudioTime();
+  audioPlaying = loadPlayState();
+  if (audioPlaying) {
+    audioElement
+      .play()
+      .catch((e) => console.error("Audio playback failed:", e));
+    playbtn.classList.add("active");
+  } else {
+    audioElement.pause();
+    playbtn.classList.remove("active");
+  }
 });
 
-window.addEventListener('beforeunload', function() {
-    saveAudioTime();
-    savePlayState();
+window.addEventListener("beforeunload", function () {
+  saveAudioTime();
+  savePlayState();
 });

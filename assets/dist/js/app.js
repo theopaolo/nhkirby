@@ -544,6 +544,7 @@ var _mouseHandlerJs = require("./modules/mouseHandler.js");
 var _videoLightboxHandlerJs = require("./modules/videoLightboxHandler.js");
 var _controlsManagerJs = require("./modules/controlsManager.js");
 var _starrySkyJs = require("./starrySky.js");
+var _handleFullscreenJs = require("./modules/handleFullscreen.js");
 const starsCanvas = document.getElementById("starry-sky");
 (0, _starrySkyJs.initializeStarrySky)(starsCanvas);
 // Constants
@@ -694,19 +695,15 @@ function vidSphere(videoArray) {
 vidSphere(DOM_VIDEOS);
 // Event Handlers
 function handleExploreButtonClick() {
+    console.log("Explore button clicked", camera.position);
     const tl = gsap.timeline();
     tl.fromTo(camera.position, {
-        x: 350,
-        y: 250,
-        z: 0
-    }, INITIAL_CAMERA_POSITION, {
+        ...camera.position
+    }, {
+        ...INITIAL_CAMERA_POSITION,
         duration: 2,
         ease: "power3.inOut"
-    }).fromTo(camera.rotation, camera.rotation, INITIAL_CAMERA_ROTATION, {
-        duration: 2,
-        ease: "power3.inOut"
-    }, "-=2");
-    trackballControls.reset();
+    });
 }
 // Optimized resize function using rAF
 let resizeRequested = false;
@@ -799,8 +796,8 @@ async function loadAudioState() {
         PLAY_BUTTON.classList.remove("active");
     }
 }
-async function handleIntroButtonClick(event) {
-    localStorage.setItem("entered", "true");
+async function handleIntroButtonClick(e) {
+    localStorage.setItem("entered", "false");
     hideIntro();
     zoomIn();
     loadAudioTime();
@@ -869,22 +866,6 @@ document.addEventListener("swup:contentReplaced", ()=>{
     initializeAudio();
     checkIntroState();
 });
-function handleFullScreen() {
-    if (!document.fullscreenElement) {
-        FULLSCREEN_BUTTON.classList.add("active");
-        if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
-        else if (document.documentElement.mozRequestFullScreen) document.documentElement.mozRequestFullScreen();
-        else if (document.documentElement.webkitRequestFullscreen) document.documentElement.webkitRequestFullscreen();
-        else if (document.documentElement.msRequestFullscreen) document.documentElement.msRequestFullscreen();
-    } else {
-        FULLSCREEN_BUTTON.classList.remove("active");
-        if (document.exitFullscreen) document.exitFullscreen();
-        else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
-        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-        else if (document.msExitFullscreen) document.msExitFullscreen();
-    }
-    setTimeout(handleWindowResizeRAF, 100);
-}
 // Animation Functions
 function hideIntro() {
     gsap.to(".introduction", {
@@ -896,21 +877,16 @@ function hideIntro() {
         }
     });
 }
-const randomRange = (min, max)=>Math.random() * (max - min) + min;
 function zoomIn() {
-    const randomPos = ()=>randomRange(0, 5);
     gsap.timeline().fromTo(camera.position, {
         x: 15,
         y: -20,
         z: 10
     }, {
-        x: 55,
-        y: 0,
-        z: 0,
+        ...INITIAL_CAMERA_POSITION,
         duration: 4,
         ease: "power3.inOut"
     });
-// .to(camera.position, { x: 55, y: 0, z: 0, duration: 2, ease: "power3.inOut" });
 }
 function removeOverlay() {
     gsap.to(overlay.material.uniforms.uAlpha, {
@@ -945,7 +921,7 @@ const INTRO_BUTTONS = document.querySelectorAll(".btnintro");
 const FULLSCREEN_BUTTON = document.querySelector(".fullscreenbtn");
 EXPLORE_BUTTON.addEventListener("click", handleExploreButtonClick);
 INTRO_BUTTONS.forEach((btn)=>btn.addEventListener("click", handleIntroButtonClick));
-if (FULLSCREEN_BUTTON) FULLSCREEN_BUTTON.addEventListener("click", handleFullScreen);
+if (FULLSCREEN_BUTTON) FULLSCREEN_BUTTON.addEventListener("click", ()=>(0, _handleFullscreenJs.handleFullScreen)(FULLSCREEN_BUTTON));
 // Event listeners
 window.addEventListener("resize", handleWindowResizeRAF);
 document.addEventListener("fullscreenchange", handleWindowResizeRAF);
@@ -955,7 +931,7 @@ document.addEventListener("MSFullscreenChange", handleWindowResizeRAF);
 initLoading();
 tick();
 
-},{"three":"Br5dd","swup":"4uXKc","@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI","./scriptManager":"hykEh","./swupManager":"ghxDj","./modules/mouseHandler.js":"6wcRJ","./modules/controlsManager.js":"8j0VF","./modules/videoLightboxHandler.js":"hpKAW","./starrySky.js":"70oWH"}],"Br5dd":[function(require,module,exports) {
+},{"three":"Br5dd","swup":"4uXKc","./scriptManager":"hykEh","./swupManager":"ghxDj","./modules/mouseHandler.js":"6wcRJ","./modules/videoLightboxHandler.js":"hpKAW","./modules/controlsManager.js":"8j0VF","./starrySky.js":"70oWH","./modules/handleFullscreen.js":"bS7UL","@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI"}],"Br5dd":[function(require,module,exports) {
 /**
  * @license
  * Copyright 2010-2022 Three.js Authors
@@ -31485,7 +31461,180 @@ function initMouseHandler(canvas, camera, imgObjects, videoObjects) {
     };
 }
 
-},{"three":"Br5dd","@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI"}],"8j0VF":[function(require,module,exports) {
+},{"three":"Br5dd","@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI"}],"hpKAW":[function(require,module,exports) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+// Image lightbox handler
+parcelHelpers.export(exports, "initLightboxHandler", ()=>initLightboxHandler);
+// Video lightbox handler
+parcelHelpers.export(exports, "initVideoLightboxHandler", ()=>initVideoLightboxHandler);
+// Unified handler for both images and videos
+parcelHelpers.export(exports, "initLightboxHandlers", ()=>initLightboxHandlers);
+const gsap = window.gsap;
+function clearLightbox() {
+    // Remove any existing image or video in the lightbox
+    const existingImage = document.querySelector(".imagebox");
+    const existingVideo = document.querySelector(".videobox");
+    if (existingImage) existingImage.remove();
+    if (existingVideo) {
+        existingVideo.pause();
+        existingVideo.remove();
+    }
+}
+function initLightboxHandler(lightbox, imgObjects, canvas, getCurrentIntersect) {
+    let imgbox = null;
+    let imgcreated = false;
+    let tl = gsap.timeline();
+    function createImg(url) {
+        clearLightbox(); // Clear any existing images or videos
+        const newimg = document.createElement("img");
+        newimg.src = url;
+        newimg.classList.add("imagebox", "img-active");
+        lightbox.appendChild(newimg);
+        imgbox = document.querySelector(".imagebox");
+        imgcreated = true;
+        tl.to(".lightbox", {
+            opacity: 1,
+            zIndex: 999,
+            duration: 0.5
+        }).from(".imagebox", {
+            opacity: 0,
+            zIndex: 0,
+            duration: 0
+        });
+        imgbox.addEventListener("click", removeImage);
+    }
+    function removeImage() {
+        if (imgcreated) {
+            tl.to(".lightbox", {
+                opacity: 0,
+                duration: 1,
+                zIndex: 0
+            });
+            setTimeout(()=>{
+                imgbox.remove();
+                imgcreated = false;
+            }, 1000);
+        }
+    }
+    const handleTap = (event)=>{
+        event.preventDefault();
+        const currentIntersect = getCurrentIntersect();
+        if (currentIntersect) {
+            for (const imgObject of imgObjects)if (currentIntersect.object === imgObject) {
+                createImg(imgObject.material.map.source.data.currentSrc);
+                break;
+            }
+        } else removeImage();
+    };
+    const handleDoubleClick = ()=>{
+        const currentIntersect = getCurrentIntersect();
+        if (currentIntersect) {
+            for (const imgObject of imgObjects)if (currentIntersect.object === imgObject) {
+                createImg(imgObject.material.map.source.data.currentSrc);
+                break;
+            }
+        }
+    };
+    canvas.addEventListener("touchstart", handleTap);
+    canvas.addEventListener("dblclick", handleDoubleClick);
+}
+function initVideoLightboxHandler(lightbox, videoMeshes, DOM_VIDEOS, canvas, getCurrentIntersect) {
+    let videobox = null;
+    let videocreated = false;
+    let tl = gsap.timeline();
+    function createVideo(url) {
+        clearLightbox(); // Clear any existing images or videos
+        const newVideo = document.createElement("video");
+        newVideo.src = url;
+        newVideo.muted = true;
+        newVideo.setAttribute("autoplay", "autoplay");
+        newVideo.setAttribute("loop", "loop");
+        newVideo.classList.add("videobox", "video-active");
+        lightbox.appendChild(newVideo);
+        videobox = document.querySelector(".videobox");
+        videocreated = true;
+        tl.to(".lightbox", {
+            opacity: 1,
+            zIndex: 999,
+            duration: 0.5
+        }).from(".videobox", {
+            opacity: 0,
+            zIndex: 0,
+            duration: 0
+        });
+        videobox.addEventListener("click", removeVideo);
+    }
+    function removeVideo() {
+        if (videocreated) {
+            tl.to(".lightbox", {
+                opacity: 0,
+                duration: 1,
+                zIndex: 0
+            });
+            setTimeout(()=>{
+                videobox.pause();
+                videobox.remove();
+                videocreated = false;
+            }, 1000);
+        }
+    }
+    const handleTap = (event)=>{
+        event.preventDefault();
+        const currentIntersect = getCurrentIntersect();
+        if (currentIntersect) {
+            for(let i = 0; i < videoMeshes.length; i++)if (currentIntersect.object === videoMeshes[i]) {
+                const videoSrc = DOM_VIDEOS[i].currentSrc;
+                createVideo(videoSrc);
+                break;
+            }
+        } else removeVideo();
+    };
+    const handleDoubleClick = ()=>{
+        const currentIntersect = getCurrentIntersect();
+        if (currentIntersect) {
+            for(let i = 0; i < videoMeshes.length; i++)if (currentIntersect.object === videoMeshes[i]) {
+                const videoSrc = DOM_VIDEOS[i].currentSrc;
+                createVideo(videoSrc);
+                break;
+            }
+        }
+    };
+    canvas.addEventListener("touchstart", handleTap);
+    canvas.addEventListener("dblclick", handleDoubleClick);
+}
+function initLightboxHandlers(lightbox, imgObjects, videoMeshes, DOM_VIDEOS, canvas, getCurrentIntersect) {
+    canvas.addEventListener("touchstart", (event)=>{
+        event.preventDefault();
+        const currentIntersect = getCurrentIntersect();
+        if (currentIntersect) {
+            for (const imgObject of imgObjects)if (currentIntersect.object === imgObject) {
+                initLightboxHandler(lightbox, imgObjects, canvas, getCurrentIntersect);
+                return;
+            }
+            for(let i = 0; i < videoMeshes.length; i++)if (currentIntersect.object === videoMeshes[i]) {
+                initVideoLightboxHandler(lightbox, videoMeshes, DOM_VIDEOS, canvas, getCurrentIntersect);
+                return;
+            }
+        }
+    });
+    canvas.addEventListener("dblclick", (event)=>{
+        event.preventDefault();
+        const currentIntersect = getCurrentIntersect();
+        if (currentIntersect) {
+            for (const imgObject of imgObjects)if (currentIntersect.object === imgObject) {
+                initLightboxHandler(lightbox, imgObjects, canvas, getCurrentIntersect);
+                return;
+            }
+            for(let i = 0; i < videoMeshes.length; i++)if (currentIntersect.object === videoMeshes[i]) {
+                initVideoLightboxHandler(lightbox, videoMeshes, DOM_VIDEOS, canvas, getCurrentIntersect);
+                return;
+            }
+        }
+    });
+}
+
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI"}],"8j0VF":[function(require,module,exports) {
 // trackballControls.js
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
@@ -31935,180 +32084,7 @@ class TrackballControls extends (0, _three.EventDispatcher) {
     }
 }
 
-},{"three":"Br5dd","@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI"}],"hpKAW":[function(require,module,exports) {
-var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
-parcelHelpers.defineInteropFlag(exports);
-// Image lightbox handler
-parcelHelpers.export(exports, "initLightboxHandler", ()=>initLightboxHandler);
-// Video lightbox handler
-parcelHelpers.export(exports, "initVideoLightboxHandler", ()=>initVideoLightboxHandler);
-// Unified handler for both images and videos
-parcelHelpers.export(exports, "initLightboxHandlers", ()=>initLightboxHandlers);
-const gsap = window.gsap;
-function clearLightbox() {
-    // Remove any existing image or video in the lightbox
-    const existingImage = document.querySelector(".imagebox");
-    const existingVideo = document.querySelector(".videobox");
-    if (existingImage) existingImage.remove();
-    if (existingVideo) {
-        existingVideo.pause();
-        existingVideo.remove();
-    }
-}
-function initLightboxHandler(lightbox, imgObjects, canvas, getCurrentIntersect) {
-    let imgbox = null;
-    let imgcreated = false;
-    let tl = gsap.timeline();
-    function createImg(url) {
-        clearLightbox(); // Clear any existing images or videos
-        const newimg = document.createElement("img");
-        newimg.src = url;
-        newimg.classList.add("imagebox", "img-active");
-        lightbox.appendChild(newimg);
-        imgbox = document.querySelector(".imagebox");
-        imgcreated = true;
-        tl.to(".lightbox", {
-            opacity: 1,
-            zIndex: 999,
-            duration: 0.5
-        }).from(".imagebox", {
-            opacity: 0,
-            zIndex: 0,
-            duration: 0
-        });
-        imgbox.addEventListener("click", removeImage);
-    }
-    function removeImage() {
-        if (imgcreated) {
-            tl.to(".lightbox", {
-                opacity: 0,
-                duration: 1,
-                zIndex: 0
-            });
-            setTimeout(()=>{
-                imgbox.remove();
-                imgcreated = false;
-            }, 1000);
-        }
-    }
-    const handleTap = (event)=>{
-        event.preventDefault();
-        const currentIntersect = getCurrentIntersect();
-        if (currentIntersect) {
-            for (const imgObject of imgObjects)if (currentIntersect.object === imgObject) {
-                createImg(imgObject.material.map.source.data.currentSrc);
-                break;
-            }
-        } else removeImage();
-    };
-    const handleDoubleClick = ()=>{
-        const currentIntersect = getCurrentIntersect();
-        if (currentIntersect) {
-            for (const imgObject of imgObjects)if (currentIntersect.object === imgObject) {
-                createImg(imgObject.material.map.source.data.currentSrc);
-                break;
-            }
-        }
-    };
-    canvas.addEventListener("touchstart", handleTap);
-    canvas.addEventListener("dblclick", handleDoubleClick);
-}
-function initVideoLightboxHandler(lightbox, videoMeshes, DOM_VIDEOS, canvas, getCurrentIntersect) {
-    let videobox = null;
-    let videocreated = false;
-    let tl = gsap.timeline();
-    function createVideo(url) {
-        clearLightbox(); // Clear any existing images or videos
-        const newVideo = document.createElement("video");
-        newVideo.src = url;
-        newVideo.muted = true;
-        newVideo.setAttribute("autoplay", "autoplay");
-        newVideo.setAttribute("loop", "loop");
-        newVideo.classList.add("videobox", "video-active");
-        lightbox.appendChild(newVideo);
-        videobox = document.querySelector(".videobox");
-        videocreated = true;
-        tl.to(".lightbox", {
-            opacity: 1,
-            zIndex: 999,
-            duration: 0.5
-        }).from(".videobox", {
-            opacity: 0,
-            zIndex: 0,
-            duration: 0
-        });
-        videobox.addEventListener("click", removeVideo);
-    }
-    function removeVideo() {
-        if (videocreated) {
-            tl.to(".lightbox", {
-                opacity: 0,
-                duration: 1,
-                zIndex: 0
-            });
-            setTimeout(()=>{
-                videobox.pause();
-                videobox.remove();
-                videocreated = false;
-            }, 1000);
-        }
-    }
-    const handleTap = (event)=>{
-        event.preventDefault();
-        const currentIntersect = getCurrentIntersect();
-        if (currentIntersect) {
-            for(let i = 0; i < videoMeshes.length; i++)if (currentIntersect.object === videoMeshes[i]) {
-                const videoSrc = DOM_VIDEOS[i].currentSrc;
-                createVideo(videoSrc);
-                break;
-            }
-        } else removeVideo();
-    };
-    const handleDoubleClick = ()=>{
-        const currentIntersect = getCurrentIntersect();
-        if (currentIntersect) {
-            for(let i = 0; i < videoMeshes.length; i++)if (currentIntersect.object === videoMeshes[i]) {
-                const videoSrc = DOM_VIDEOS[i].currentSrc;
-                createVideo(videoSrc);
-                break;
-            }
-        }
-    };
-    canvas.addEventListener("touchstart", handleTap);
-    canvas.addEventListener("dblclick", handleDoubleClick);
-}
-function initLightboxHandlers(lightbox, imgObjects, videoMeshes, DOM_VIDEOS, canvas, getCurrentIntersect) {
-    canvas.addEventListener("touchstart", (event)=>{
-        event.preventDefault();
-        const currentIntersect = getCurrentIntersect();
-        if (currentIntersect) {
-            for (const imgObject of imgObjects)if (currentIntersect.object === imgObject) {
-                initLightboxHandler(lightbox, imgObjects, canvas, getCurrentIntersect);
-                return;
-            }
-            for(let i = 0; i < videoMeshes.length; i++)if (currentIntersect.object === videoMeshes[i]) {
-                initVideoLightboxHandler(lightbox, videoMeshes, DOM_VIDEOS, canvas, getCurrentIntersect);
-                return;
-            }
-        }
-    });
-    canvas.addEventListener("dblclick", (event)=>{
-        event.preventDefault();
-        const currentIntersect = getCurrentIntersect();
-        if (currentIntersect) {
-            for (const imgObject of imgObjects)if (currentIntersect.object === imgObject) {
-                initLightboxHandler(lightbox, imgObjects, canvas, getCurrentIntersect);
-                return;
-            }
-            for(let i = 0; i < videoMeshes.length; i++)if (currentIntersect.object === videoMeshes[i]) {
-                initVideoLightboxHandler(lightbox, videoMeshes, DOM_VIDEOS, canvas, getCurrentIntersect);
-                return;
-            }
-        }
-    });
-}
-
-},{"@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI"}],"70oWH":[function(require,module,exports) {
+},{"three":"Br5dd","@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI"}],"70oWH":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "initializeStarrySky", ()=>initializeStarrySky);
@@ -32158,6 +32134,33 @@ function initializeStarrySky(starsCanvas) {
         stars.length = 0; // Clear existing stars
         createStars(); // Recreate stars for the new size
     });
+}
+
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI"}],"bS7UL":[function(require,module,exports) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+parcelHelpers.export(exports, "handleFullScreen", ()=>handleFullScreen);
+function handleFullScreen(toggler, element = document.documentElement) {
+    if (!document.fullscreenElement) {
+        toggler.classList.add("active");
+        if (element.requestFullscreen) element.requestFullscreen();
+        else if (element.mozRequestFullScreen) // Firefox
+        element.mozRequestFullScreen();
+        else if (element.webkitRequestFullscreen) // Chrome, Safari and Opera
+        element.webkitRequestFullscreen();
+        else if (element.msRequestFullscreen) // IE/Edge
+        element.msRequestFullscreen();
+    } else {
+        toggler.classList.remove("active");
+        if (document.exitFullscreen) document.exitFullscreen();
+        else if (document.mozCancelFullScreen) // Firefox
+        document.mozCancelFullScreen();
+        else if (document.webkitExitFullscreen) // Chrome, Safari and Opera
+        document.webkitExitFullscreen();
+        else if (document.msExitFullscreen) // IE/Edge
+        document.msExitFullscreen();
+    }
+    setTimeout(handleWindowResizeRAF, 100);
 }
 
 },{"@parcel/transformer-js/src/esmodule-helpers.js":"jDSBI"}]},["7eoOY","6Bv9J"], "6Bv9J", "parcelRequire94c2")

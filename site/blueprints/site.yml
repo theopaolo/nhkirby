@@ -63,3 +63,18 @@ tabs:
       loading:
         label: Chargement
         type: text
+
+  menu:
+    icon: bars
+    fields:
+      navigation:
+        label: Navigation
+        type: structure
+        fields:
+          category:
+            label: Catégories
+            type: text
+          menu_item_url:
+            label: Pages
+            type: pages
+            query: site.find('series')

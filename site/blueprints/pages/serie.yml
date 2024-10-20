@@ -20,14 +20,22 @@ tabs:
               - noir
             help: Blanc par défaut
             width: 1/4
-          marges:
-            label: Marges
+          justification:
+            label: Justification
             type:  toggle
             text:
-              - avec
-              - sans
-            help: Avec par défaut
+              - Justifier
+              - Normal
+            help: Justifier par défaut
             width: 1/4
+          # marges:
+          #   label: Marges
+          #   type:  toggle
+          #   text:
+          #     - avec
+          #     - sans
+          #   help: Avec par défaut
+          #   width: 1/4
           text:
             label: Introduction
             type:  writer

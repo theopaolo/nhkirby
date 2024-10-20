@@ -11,6 +11,7 @@ $fullheight = $page->marges()->toBool();
 
     <?php snippet("nav"); ?>
     <?php snippet("mobnav"); ?>
+    <?php snippet("mainmenu"); ?>
 
     <section class="gallery">
 
@@ -35,10 +36,11 @@ $fullheight = $page->marges()->toBool();
       </div>
 
       <?php foreach ($page->gallery()->toLayouts() as $layout): ?>
-        <?php $seriegridclass = "";
-          if ($layout->columns()->count() > 1) {
-              $seriegridclass = "serie-grid";
-          }
+        <?php
+        $seriegridclass = "";
+        if ($layout->columns()->count() > 1) {
+            $seriegridclass = "serie-grid";
+        }
         $hasNonVideoBlocks = false;
         foreach ($layout->columns() as $column) {
             foreach ($column->blocks() as $block) {
@@ -60,7 +62,11 @@ $fullheight = $page->marges()->toBool();
                   <!-- Skip rendering the video block here; we'll handle it separately -->
                   <?php continue; ?>
                 <?php else: ?>
-                    <div class="column <?= $block->position() ?> <?= $block->gridcol()->toBool() ? "grid-col-2" : "" ?> <?= $fullheight ? "full-height" : "" ?>">
+                    <div class="column <?= $block->position() ?> <?= $block
+     ->gridcol()
+     ->toBool()
+     ? "grid-col-2"
+     : "" ?> <?= $fullheight ? "full-height" : "" ?>">
                     <?= $block ?>
                   </div>
                 <?php endif; ?>
@@ -119,23 +125,27 @@ $fullheight = $page->marges()->toBool();
         </section>
       <?php endif; ?>
 
-      <div class="soundbtn" style="position: fixed; bottom:1rem;">
-        <!-- <div class="wave">
-            <span></span><span></span><span></span><span></span><span></span><span></span>
-          </div> -->
-
-        <div class="playpausebtn">
-          <svg class="play-icon" aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M3.5 3.80902L19.882 12L3.5 20.191L3.5 3.80902Z" stroke="#a1a1a1" />
-          </svg>
-
-          <svg class="pause-icon" aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="4.5" y="3.5" width="5" height="17" stroke="#a1a1a1" />
-            <rect x="14.5" y="3.5" width="5" height="17" stroke="#a1a1a1" />
-          </svg>
+      <div class="action flex gap-2" style="position: fixed; bottom:1rem;">
+        <div class="soundbtn">
+          <div class="playpausebtn">
+            <svg class="play-icon" aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M3.5 3.80902L19.882 12L3.5 20.191L3.5 3.80902Z" stroke="#a1a1a1" />
+            </svg>
+            <svg class="pause-icon" aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="4.5" y="3.5" width="5" height="17" stroke="#a1a1a1" />
+              <rect x="14.5" y="3.5" width="5" height="17" stroke="#a1a1a1" />
+            </svg>
+          </div>
         </div>
-
-        <!-- <span><?= $site->audiobtn()->text() ?></span> -->
+        <div class="fullscreenbtn">
+            <svg aria-hidden="true" class="fullscreen-icon" width="100" height="100" viewBox="-10 -10 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" role="button" aria-label="Fullscreen Icon">
+              <path d="M3.30103 100.109L23.641 79.3391L20.0707 75.8391L-0.28127 96.6201L0.21092 78.1001L-4.30078 77.9868L-5 104.999L22 103.737L21.7891 99.2371L3.30103 100.109Z" fill="black"/>
+              <path d="M78.0002 -3.73819L78.2111 0.76181L96.6991 -0.10928L76.3591 20.6607L79.9294 24.1607L100.281 3.39072L99.7892 21.8987L104.301 22.012L105 -5L78.0002 -3.73819Z" fill="black"/>
+              <path d="M78.0002 103.738L78.2111 99.2381L96.6991 100.109L76.3591 79.3392L79.9294 75.8392L100.281 96.6092L99.7892 78.1012L104.301 77.9879L105 105L78.0002 103.738Z" fill="black"/>
+              <path d="M3.30103 -0.1093L23.641 20.6607L20.0707 24.1607L-0.28127 3.3797L0.21092 21.8997L-4.30078 22.013L-5 -4.99902L22 -3.73732L21.7891 0.76268L3.30103 -0.1093Z" fill="black"/>
+            </svg>
+            <span class="sr-only"><?= $site->fullscreenbtn()->text() ?></span>
+        </div>
       </div>
       <?php if ($sound = $site->fondsonore()->toFile()): ?>
         <audio loop>
@@ -148,6 +158,5 @@ $fullheight = $page->marges()->toBool();
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.4/gsap.min.js"></script>
-<?= js("assets/js/series.js") ?>
-
+<?= js("assets/js/series.js", ["type" => "module"]) ?>
 <?php snippet("footer"); ?>
