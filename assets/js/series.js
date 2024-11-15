@@ -1,33 +1,57 @@
-import { handleFullScreen } from "./modules/handleFullscreen.js";
-const FULLSCREEN_BUTTON = document.querySelector(".fullscreenbtn");
-if (FULLSCREEN_BUTTON) {
-  FULLSCREEN_BUTTON.addEventListener("click", () =>
-    handleFullScreen(FULLSCREEN_BUTTON),
-  );
-}
 const gsap = window.gsap;
-let nextBtn = document.querySelector(".next");
-let prevBtn = document.querySelector(".prev");
+let nextBtns = document.querySelectorAll(".next");
+let prevBtns = document.querySelectorAll(".prev");
 let slides = document.querySelectorAll(".slides");
 
 let slidesCount = slides.length;
 let slidesIndex = 1;
+let isLightboxOpen = false;
 
 // Counter
 let allimgcount = document.querySelector(".allcount");
 let firstall = document.querySelector(".firstall");
 let currentimgcount = document.querySelector(".currentcount");
-let twoimgs = document.querySelectorAll(".two-img");
-let isLightboxOpen = false;
-if (window.innerWidth < 768) {
-  if (twoimgs.length > 0) {
-    twoimgs.forEach(function (el) {
-      el.parentNode.removeChild(el);
-    });
-  }
+
+// let twoimgs = document.querySelectorAll(".two-img");
+// if (window.innerWidth < 768) {
+//   if (twoimgs.length > 0) {
+//     twoimgs.forEach(function (el) {
+//       el.parentNode.removeChild(el);
+//     });
+//   }
+// }
+
+// const imageCount = imageSlides.length;
+
+allimgcount.innerHTML = slidesCount;
+if (firstall) {
+  firstall.innerHTML = slidesCount;
 }
 
-showSlides(slidesIndex);
+// Helper function to get slide type
+function isImageSlide(slide) {
+  return !slide.classList.contains("intro-text");
+}
+
+// Crée un mapping entre les indices de slides et les indices d'images
+function createImageMapping() {
+  const mapping = new Map();
+  let imageIndex = 0;
+
+  slides.forEach((slide, slideIndex) => {
+    if (isImageSlide(slide)) {
+      mapping.set(`image-${imageIndex}`, slideIndex);
+      mapping.set(slideIndex, imageIndex);
+      imageIndex++;
+    }
+  });
+
+  return { mapping, totalImages: imageIndex };
+}
+
+const { mapping: slideMapping, totalImages } = createImageMapping();
+
+
 
 window.addEventListener("load", nameCountHeight);
 window.addEventListener("resize", nameCountHeight);
@@ -37,23 +61,15 @@ function scrollTop() {
 }
 
 function nameCountHeight() {
-  let overlay = document.querySelector(".overlay");
-  overlay.style.opacity = 0;
-  setTimeout(() => {
-    overlay.style.display = "none";
-  }, 1000);
-
   if (window.innerWidth < 745) {
-    document.body.classList.add("firstSlide");
-    console.log(slidesIndex);
-    if (slidesIndex > 1) {
+    if (slidesIndex === slidesCount) {
+      document.body.classList.add("firstSlide");
+    } else {
       document.body.classList.remove("firstSlide");
-    }
-    if (slidesIndex === 2) {
-      scrollTop();
     }
   } else {
     document.body.classList.remove("firstSlide");
+    scrollTop();
   }
 }
 
@@ -92,6 +108,9 @@ window.addEventListener(
   true,
 );
 
+showSlides(slidesIndex);
+
+
 // Next/previous controls
 function plusSlides(n) {
   showSlides((slidesIndex += n));
@@ -105,7 +124,6 @@ if (firstall) {
 }
 
 function showSlides(n) {
-  slidesIndex = getValidSlideIndex(n);
   let i;
   if (n > slidesCount) {
     slidesIndex = 1;
@@ -114,41 +132,183 @@ function showSlides(n) {
     slidesIndex = slidesCount;
   }
 
+  // Cache toutes les slides
   for (i = 0; i < slidesCount; i++) {
     slides[i].style.display = "none";
   }
 
-  if (slides[slidesIndex - 1].classList.contains("center")) {
-    slides[slidesIndex - 1].style.display = "flex";
+  // Affiche la slide courante
+  slidesIndex = getValidSlideIndex(n);
+  const currentSlide = slides[slidesIndex - 1];
+
+  if (currentSlide.classList.contains("center")) {
+    currentSlide.style.display = "flex";
   } else {
-    slides[slidesIndex - 1].style.display = "grid";
+    currentSlide.style.display = "grid";
   }
+
+  // Met à jour le compteur avec le numéro de slide actuel (texte inclus)
   currentimgcount.innerHTML = slidesIndex;
 
-  if (isLightboxOpen) {
+  // Si la lightbox est ouverte et qu'on arrive sur une slide de texte,
+  // on passe à la prochaine slide d'image
+  if (isLightboxOpen && !isImageSlide(currentSlide)) {
+    const nextImageSlide = findNextImageSlide(slidesIndex);
+    showSlides(nextImageSlide);
+    return;
+  }
+
+  // Met à jour la lightbox si elle est ouverte
+  if (isLightboxOpen && isImageSlide(currentSlide)) {
     updateLightboxImage(slidesIndex);
   }
 }
 
-function updateLightboxImage(slideIndex) {
-  const images = document.querySelectorAll(".gallery img");
-  const imageIndex = slideIndex - 2; // Adjust for 0-based index and skipping first slide
+function findNextImageSlide(currentIndex) {
+  let index = currentIndex;
+  while (index <= slidesCount) {
+    if (isImageSlide(slides[index - 1])) {
+      return index;
+    }
+    index++;
+    if (index > slidesCount) index = 1;
+  }
+  return currentIndex;
+}
 
-  if (imageIndex >= 0 && imageIndex < images.length) {
-    lighterboxImg.src = images[imageIndex].src;
-    lighterboxImg.dataset.currentImg = imageIndex;
+function updateLightboxImage(slideIndex) {
+  const currentSlide = slides[slideIndex - 1];
+  if (isImageSlide(currentSlide)) {
+    const img = currentSlide.querySelector("img");
+    if (img) {
+      lighterboxImg.src = img.src;
+      const imageIndex = slideMapping.get(slideIndex - 1);
+      lighterboxImg.dataset.currentImg = imageIndex;
+    }
   }
 }
 
-prevBtn.addEventListener("click", () => {
-  showSlides((slidesIndex += -1));
-  nameCountHeight();
+// Event listeners for navigation
+prevBtns.forEach(btn => {
+  btn.addEventListener("click", () => {
+    showSlides(slidesIndex - 1);
+    nameCountHeight();
+  });
 });
 
-nextBtn.addEventListener("click", () => {
-  showSlides((slidesIndex += 1));
-  nameCountHeight();
+nextBtns.forEach(btn => {
+  btn.addEventListener("click", () => {
+    showSlides(slidesIndex + 1);
+    nameCountHeight();
+  });
 });
+
+
+// LightboxCode
+
+const lighterboxHTML = `
+  <div id="lighterbox" class="lighterbox">
+    <img class="lighterbox-content" id="lighterbox-img">
+  </div>
+`;
+
+// Add the lighterbox HTML to the body
+document.body.insertAdjacentHTML("beforeend", lighterboxHTML);
+
+// Get references to the lighterbox elements
+const lighterbox = document.getElementById("lighterbox");
+const lighterboxImg = document.getElementById("lighterbox-img");
+const isBackgroundLight = document.querySelector(".slides .bg-light");
+
+function openLighterbox(imgElement) {
+  lighterbox.style.display = "block";
+  lighterboxImg.src = imgElement.src;
+  const imageIndex = parseInt(imgElement.dataset.index);
+  lighterboxImg.dataset.currentImg = imageIndex;
+  isLightboxOpen = true;
+  lighterbox.classList.add(isBackgroundLight ? "bg-light" : "bg-dark");
+
+  // Trouve la slide correspondante et l'affiche
+  const mainSlideIndex = slideMapping.get(`image-${imageIndex}`);
+  showSlides(mainSlideIndex + 1);
+
+  gsap.set(lighterbox, { opacity: 0 });
+  gsap.to(lighterbox, {
+    duration: 0.5,
+    opacity: 1,
+    ease: "power2.inOut",
+  });
+}
+
+function navigateLightbox(direction) {
+  let currentImageIndex = parseInt(lighterboxImg.dataset.currentImg);
+  let newImageIndex = currentImageIndex + direction;
+
+  // Gestion du cycle des images
+  if (newImageIndex < 0) newImageIndex = totalImages - 1;
+  if (newImageIndex >= totalImages) newImageIndex = 0;
+
+  // Trouve la slide correspondante
+  const newSlideIndex = slideMapping.get(`image-${newImageIndex}`);
+  lighterboxImg.dataset.currentImg = newImageIndex;
+  showSlides(newSlideIndex + 1);
+}
+
+// Function to close the lighterbox
+function closeLighterbox() {
+  gsap.to(lighterbox, {
+    duration: 0.5,
+    opacity: 0,
+    ease: "power2.inOut",
+    onComplete: () => {
+      lighterbox.style.display = "none";
+      isLightboxOpen = false;
+      showSlides(slidesIndex);
+    },
+  });
+}
+
+
+function getValidSlideIndex(index) {
+  if (index < 1) return slidesCount;
+  if (index > slidesCount) return 1;
+  return index;
+}
+
+// Add click event listeners to all gallery images
+const allImgs = document.querySelectorAll(".gallery img");
+allImgs.forEach((img, index) => {
+  img.dataset.index = index;
+  img.addEventListener("click", function () {
+    if (lighterbox.style.display === "block") {
+      closeLighterbox();
+    } else {
+      openLighterbox(this);
+    }
+  });
+});
+
+// Close the lighterbox when clicking the Lightbox
+lighterboxImg.addEventListener("click", function (e) {
+  closeLighterbox();
+});
+
+// Add keyboard support (Esc to close)
+document.addEventListener("keydown", function (e) {
+  if (e.key === "Escape") {
+    closeLighterbox();
+  }
+});
+
+// FULLSCREEN, VIDEO AND AUDIO
+import { handleFullScreen } from "./modules/handleFullscreen.js";
+const FULLSCREEN_BUTTON = document.querySelector(".fullscreenbtn");
+
+if (FULLSCREEN_BUTTON) {
+  FULLSCREEN_BUTTON.addEventListener("click", () =>
+    handleFullScreen(FULLSCREEN_BUTTON),
+  );
+}
 
 const controls = `
 <div class="plyr__controls">
@@ -179,104 +339,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const players = Array.from(document.querySelectorAll(".video-player")).map(
     (p) => new Plyr(p, { controls }),
   );
-});
-
-const lighterboxHTML = `
-  <div id="lighterbox" class="lighterbox">
-    <img class="lighterbox-content" id="lighterbox-img">
-  </div>
-`;
-
-// Add the lighterbox HTML to the body
-document.body.insertAdjacentHTML("beforeend", lighterboxHTML);
-
-// Get references to the lighterbox elements
-const lighterbox = document.getElementById("lighterbox");
-const lighterboxImg = document.getElementById("lighterbox-img");
-
-// Create close button
-// Function to open the lighterbox
-function openLighterbox(imgElement) {
-  lighterbox.style.display = "block";
-  lighterboxImg.src = imgElement.src;
-  lighterboxImg.dataset.currentImg = imgElement.dataset.index;
-  isLightboxOpen = true;
-
-  // Synchronize main slides with lightbox
-  showSlides(parseInt(imgElement.dataset.index) + 2); // +2 to account for 1-based index and skipping first slide
-
-  gsap.set(lighterbox, { opacity: 0 });
-  gsap.to(lighterbox, {
-    duration: 0.5,
-    opacity: 1,
-    ease: "power2.inOut",
-  });
-}
-
-function navigateLightbox(direction) {
-  const images = document.querySelectorAll(".gallery img");
-  let newIndex = parseInt(lighterboxImg.dataset.currentImg) + direction;
-
-  if (newIndex < 0) newIndex = images.length - 1;
-  if (newIndex >= images.length) newIndex = 0;
-
-  lighterboxImg.src = images[newIndex].src;
-  lighterboxImg.dataset.currentImg = newIndex;
-
-  let newSlideIndex = newIndex + 2; // +2 because slidesIndex is 1-based and we're skipping the first slide
-  if (newSlideIndex > slidesCount) newSlideIndex = 2; // Wrap to the second slide (first image slide)
-
-  // Update main slides
-  showSlides(newSlideIndex);
-}
-
-// Function to close the lighterbox
-function closeLighterbox() {
-  gsap.to(lighterbox, {
-    duration: 0.5,
-    opacity: 0,
-    ease: "power2.inOut",
-    onComplete: () => {
-      lighterbox.style.display = "none";
-      isLightboxOpen = false;
-
-      // Ensure we're showing the correct slide in the main slideshow
-      let currentImageIndex = parseInt(lighterboxImg.dataset.currentImg);
-      let correctSlideIndex = currentImageIndex + 2; // +2 to account for 1-based index and text slide
-      showSlides(correctSlideIndex);
-    },
-  });
-}
-
-function getValidSlideIndex(index) {
-  if (index < 1) return slidesCount;
-  if (index > slidesCount) return 2; // Skip to the second slide (first image slide)
-  return index;
-}
-
-// Add click event listeners to all gallery images
-const allImgs = document.querySelectorAll(".gallery img");
-allImgs.forEach((img, index) => {
-  img.dataset.index = index;
-  img.addEventListener("click", function () {
-    if (lighterbox.style.display === "block") {
-      closeLighterbox();
-    } else {
-      openLighterbox(this);
-    }
-  });
-});
-
-// Close the lighterbox when clicking the Lightbox
-lighterboxImg.addEventListener("click", function (e) {
-  closeLighterbox();
-});
-
-// Add keyboard support (Esc to close)
-document.addEventListener("keydown", function (e) {
-  if (e.key === "Escape") {
-    closeLighterbox();
-  }
 });
 
 let playbtn = document.querySelector(".soundbtn");
@@ -317,11 +379,15 @@ function playPauseAudio() {
   console.log("ispaused", audioElement.paused);
 }
 
-audioElement.pause(); // Corrected variable name
-playbtn.addEventListener("click", playPauseAudio);
+audioElement.pause();
+
 setInterval(saveAudioTime, 1000);
 
 document.addEventListener("DOMContentLoaded", function () {
+  if(!playbtn){
+    return
+  }
+  playbtn.addEventListener("click", playPauseAudio);
   loadAudioTime();
   audioPlaying = loadPlayState();
   if (audioPlaying) {

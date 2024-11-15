@@ -34,12 +34,8 @@ Portfoliobtn: Portfolio PDF
 
 ----
 
-Audiobtn: ON/OFF
+Loadingbtn: Loading...
 
 ----
 
-Fullscreenbtn: Full-screen
-
-----
-
-Loading: Loading...
+Worksbtn: works

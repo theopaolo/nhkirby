@@ -7,23 +7,11 @@
       <h1 class="z-index-4 expbtn">Nicolas Hermann</h1>
       <span class="cpar"></span>
       <div class="flex gap-4 items-center controllers">
+
         <div class="soundbtn">
-          <!-- <div class="wave">
+          <div class="wave">
             <span></span><span></span><span></span><span></span><span></span><span></span>
-          </div> -->
-
-          <div class="playpausebtn">
-            <svg class="play-icon" aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M3.5 3.80902L19.882 12L3.5 20.191L3.5 3.80902Z" stroke="#a1a1a1"/>
-            </svg>
-
-            <svg class="pause-icon" aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect x="4.5" y="3.5" width="5" height="17" stroke="#a1a1a1"/>
-              <rect x="14.5" y="3.5" width="5" height="17" stroke="#a1a1a1"/>
-            </svg>
           </div>
-
-          <!-- <span><?= $site->audiobtn()->text() ?></span> -->
         </div>
 
         <div class="fullscreenbtn">
@@ -69,9 +57,6 @@
   </video>
   <video class="video-sphere" loop muted="muted" crossOrigin="anonymous" playsinline style="display: none;" >
     <source src="https://theopaolo-com.mon.world/nhvideos/avion.mp4" type='video/mp4' >
-  </video>
-  <video class="video-sphere" loop muted="muted" crossOrigin="anonymous" playsinline style="display: none;" >
-    <source src="https://theopaolo-com.mon.world/nhvideos/embryon.mp4" type='video/mp4' >
   </video>
   <video class="video-sphere" loop muted="muted" crossOrigin="anonymous" playsinline style="display: none;" >
     <source src="https://theopaolo-com.mon.world/nhvideos/embryon.mp4" type='video/mp4' >

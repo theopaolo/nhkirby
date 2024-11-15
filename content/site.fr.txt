@@ -2,7 +2,14 @@ Title: Nicolas Hermann
 
 ----
 
-Pages: 
+Pages:
+
+- page://zuqeEihxrrYtfPnN
+- page://YxwIYVUIpH82VOr0
+- page://43MLtlC7geU3nY4D
+- page://NwOxe6jSusc6YkQJ
+- page://6mYst4HPDyIMVZzz
+- page://VgKUQbNzhmUn8jz0
 
 ----
 
@@ -38,37 +45,39 @@ Portfoliobtn: Télécharger portfolio PDF
 
 ----
 
-Audiobtn: Son on/off
+Loadingbtn: Chargement...
 
 ----
 
-Fullscreenbtn: Pleine page
-
-----
-
-Loading: Chargement...
+Worksbtn: works
 
 ----
 
 Navigation:
 
-- 
+-
+  category: Super
+  menu_item_url:
+    - page://Xd8CQTR5XFqhQIgE
+    - page://B0kcrDy27iEJoPRW
+    - page://WjDea4vZxwKP39dC
+-
   category: Images
   menu_item_url:
     - page://rpziZLAnqOZOOti6
     - page://5xNgD5yU7YKT1ujm
     - page://Rayhi9auNRqiJ1T0
-- 
+-
   category: Videos
   menu_item_url:
     - page://Xd8CQTR5XFqhQIgE
     - page://jrmQYQGCuCzGHq80
     - page://oafQqGCN6towBswU
-- 
+-
   category: Installations
   menu_item_url:
     - page://WjDea4vZxwKP39dC
-- 
+-
   category: Editions
   menu_item_url:
     - page://Jpa8hSw7ZImBtGuL

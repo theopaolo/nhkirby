@@ -54,13 +54,10 @@ tabs:
       portfoliobtn:
         label: Portfolio
         type: text
-      audiobtn:
-        label: Audio
+      worksbtn:
+        label: works
         type: text
-      fullscreenbtn:
-        label: Fullscreen
-        type: text
-      loading:
+      loadingbtn:
         label: Chargement
         type: text
 

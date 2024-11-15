@@ -1,6 +1,5 @@
 // Imports
 import * as THREE from "three";
-import Swup from "swup";
 import { initScripts } from "./scriptManager";
 import { initSwup } from "./swupManager";
 import { initMouseHandler } from "./modules/mouseHandler.js";
@@ -9,13 +8,15 @@ import { initLightboxHandlers } from "./modules/videoLightboxHandler.js";
 
 import { initControls } from "./modules/controlsManager.js";
 import { initializeStarrySky } from "./starrySky.js";
-
 import { handleFullScreen } from "./modules/handleFullscreen.js";
 
 const starsCanvas = document.getElementById("starry-sky");
 initializeStarrySky(starsCanvas);
+let audioInitialized = false;
+
 // Constants
 const gsap = window.gsap;
+const DEFAULT_TARGET = new THREE.Vector3(0, 0, 0);
 const INITIAL_CAMERA_POSITION = { x: 55, y: 0, z: 0 };
 const INITIAL_CAMERA_ROTATION = { x: 0, y: 0, z: 0 };
 const GOLDEN_NUM = 1.618033988749895;
@@ -31,6 +32,7 @@ scene.add(camera);
 // Geometry and Materials
 const PLANE_GEOMETRY_HORIZONTAL = new THREE.PlaneGeometry(3, 2);
 const PLANE_GEOMETRY_VERTICAL = new THREE.PlaneGeometry(3, 4);
+
 const SHARED_MATERIAL = new THREE.MeshBasicMaterial({
   transparent: false,
   side: THREE.DoubleSide,
@@ -69,11 +71,16 @@ function initCamera() {
     INITIAL_CAMERA_POSITION.y,
     INITIAL_CAMERA_POSITION.z,
   );
+  cam.rotation.set(
+    INITIAL_CAMERA_ROTATION.x,
+    INITIAL_CAMERA_ROTATION.y,
+    INITIAL_CAMERA_ROTATION.z,
+  );
   return cam;
 }
 
 function initRenderer(canvas) {
-  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true }); // Enable alpha for transparency
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   return renderer;
@@ -140,6 +147,7 @@ function createSphere(imageArray, geometry, textureLoader, size) {
     let planeMaterial = new THREE.MeshBasicMaterial({ map: imgText });
     planeMaterial.transparent = false;
     planeMaterial.side = THREE.DoubleSide;
+
     let planeMesh = new THREE.Mesh(geometry, planeMaterial);
 
     i += 1;
@@ -183,15 +191,77 @@ function vidSphere(videoArray) {
 
 vidSphere(DOM_VIDEOS);
 
-// Event Handlers
+// Add this at the top with your other constants
+
 function handleExploreButtonClick() {
-  console.log("Explore button clicked", camera.position);
+
+  // Get current control values
+  const startTarget = trackballControls.target.clone();
+
   const tl = gsap.timeline();
-  tl.fromTo(
-    camera.position,
-    { ...camera.position},
-    { ...INITIAL_CAMERA_POSITION, duration: 2, ease: "power3.inOut"},
-  );
+
+  tl.to(camera.position, {
+    x: INITIAL_CAMERA_POSITION.x,
+    y: INITIAL_CAMERA_POSITION.y,
+    z: INITIAL_CAMERA_POSITION.z,
+    duration: 2,
+    ease: "power3.inOut"
+  })
+  .to(camera.rotation, {
+    x: INITIAL_CAMERA_ROTATION.x,
+    y: INITIAL_CAMERA_ROTATION.y,
+    z: INITIAL_CAMERA_ROTATION.z,
+    duration: 2,
+    ease: "power3.inOut"
+  }, "<")
+  .to(IMG_GROUP.rotation, {
+    x: 0,
+    y: 0,
+    z: 0,
+    duration: 2,
+    ease: "power3.inOut"
+  }, "<")
+  // Animate camera up vector
+  .to(camera.up, {
+    x: 0,
+    y: 1,
+    z: 0,
+    duration: 2,
+    ease: "power3.inOut",
+    onUpdate: () => {
+      camera.updateProjectionMatrix();
+    }
+  }, "<")
+  // Animate trackball target
+  .to(startTarget, {
+    x: DEFAULT_TARGET.x,
+    y: DEFAULT_TARGET.y,
+    z: DEFAULT_TARGET.z,
+    duration: 2,
+    ease: "power3.inOut",
+    onUpdate: () => {
+      trackballControls.target.copy(startTarget);
+      trackballControls.update();
+    },
+    onComplete: () => {
+      // Final adjustments to ensure perfect alignment
+      camera.up.set(0, 1, 0);
+      trackballControls.target.copy(DEFAULT_TARGET);
+      trackballControls.update();
+
+      console.log("Reset complete. New state:", {
+        cameraPos: camera.position.clone(),
+        cameraRot: camera.rotation.clone(),
+        sphereRot: {
+          x: IMG_GROUP.rotation.x,
+          y: IMG_GROUP.rotation.y,
+          z: IMG_GROUP.rotation.z
+        },
+        trackballTarget: trackballControls.target.clone(),
+        cameraUp: camera.up.clone()
+      });
+    }
+  }, "<");
 }
 
 // Optimized resize function using rAF
@@ -222,22 +292,32 @@ let audioContext;
 let sourceNode;
 let gainNode;
 
-function initializeAudio() {
-  if (AUDIO && PLAY_BUTTON) {
-    setupWebAudio();
+async function initializeAudio() {
+  if (AUDIO && PLAY_BUTTON && !audioInitialized) {
+    await setupWebAudio();
     loadAudioState();
     PLAY_BUTTON.addEventListener("click", handlePlayButton);
+    audioInitialized = true;
+  } else if (audioInitialized) {
+    loadAudioState();
   }
 }
 
-function setupWebAudio() {
-  audioContext = new (window.AudioContext || window.webkitAudioContext)();
-  sourceNode = audioContext.createMediaElementSource(AUDIO);
-  gainNode = audioContext.createGain();
-  sourceNode.connect(gainNode);
-  gainNode.connect(audioContext.destination);
+async function setupWebAudio() {
+  if (!audioContext) {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    // Resume audio context - this is crucial for some browsers
+    if (audioContext.state === 'suspended') {
+      await audioContext.resume();
+    }
+  }
+  if (!sourceNode) {
+    sourceNode = audioContext.createMediaElementSource(AUDIO);
+    gainNode = audioContext.createGain();
+    sourceNode.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+  }
 }
-
 function fadeAudioOut(duration = 0.5) {
   return new Promise((resolve) => {
     if (gainNode) {
@@ -281,11 +361,11 @@ function loadAudioTime() {
   }
 }
 
-async function loadAudioState() {
+async function loadAudioState(hasEntered) {
   loadAudioTime();
   audioPlaying = loadPlayState();
 
-  if (audioPlaying && AUDIO && PLAY_BUTTON) {
+  if (hasEntered && audioPlaying && AUDIO && PLAY_BUTTON) {
     PLAY_BUTTON.classList.add("active");
     try {
       await AUDIO.play();
@@ -303,23 +383,30 @@ async function loadAudioState() {
 }
 
 async function handleIntroButtonClick(e) {
-  localStorage.setItem("entered", "true");
+  sessionStorage.setItem("entered", "true");
   hideIntro();
   zoomIn();
   loadAudioTime();
-  if (AUDIO && PLAY_BUTTON) {
-    PLAY_BUTTON.classList.add("active");
-    try {
+
+   // Initialize audio only after user interaction
+   try {
+    await initializeAudio();
+    loadAudioTime();
+
+    if (AUDIO && PLAY_BUTTON) {
+      PLAY_BUTTON.classList.add("active");
       await AUDIO.play();
       fadeAudioIn();
       audioPlaying = true;
       savePlayState();
-    } catch (error) {
-      console.error("Failed to play audio:", error);
-      audioPlaying = false;
-      PLAY_BUTTON.classList.remove("active");
-      savePlayState();
     }
+  } catch (error) {
+    console.error("Failed to initialize/play audio:", error);
+    audioPlaying = false;
+    if (PLAY_BUTTON) {
+      PLAY_BUTTON.classList.remove("active");
+    }
+    savePlayState();
   }
 }
 
@@ -346,19 +433,18 @@ async function handlePlayButton() {
 }
 
 function checkIntroState() {
-  const hasEntered = localStorage.getItem("entered") === "true";
+  const hasEntered = sessionStorage.getItem("entered") === "true";
   const introElement = document.querySelector(".introduction");
   if (hasEntered && introElement) {
     introElement.classList.add("d-none");
-    loadAudioState();
+    initializeAudio().then(() => loadAudioState(hasEntered));
   } else {
-    gsap.to(".introduction", { opacity: 1, display: "grid", duration: 0.3 });
+    gsap.to(".introduction", { opacity: 1, display: "flex", duration: 0.3 });
   }
 }
 
 // Initialize audio on page load
 document.addEventListener("DOMContentLoaded", () => {
-  initializeAudio();
   checkIntroState();
 });
 
@@ -372,18 +458,6 @@ window.addEventListener("beforeunload", function () {
 });
 
 PLAY_BUTTON.addEventListener("click", handlePlayButton);
-
-// Handle page transitions
-document.addEventListener("swup:willReplaceContent", async () => {
-  await fadeAudioOut();
-  saveAudioTime();
-  savePlayState();
-});
-
-document.addEventListener("swup:contentReplaced", () => {
-  initializeAudio();
-  checkIntroState();
-});
 
 // Animation Functions
 function hideIntro() {

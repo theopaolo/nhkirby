@@ -6,10 +6,9 @@
     },
     "dependencies": {
         "camera-controls": "^1.36.2",
-        "lazysizes": "^5.3.2",
         "parcel": "^2.8.3",
         "plyr": "^3.7.8",
         "swup": "^2.0.19",
-        "three": "^0.148.0"
+        "three": "^0.132.2"
     }
 }

@@ -2,7 +2,7 @@
 
 <main id="swup" class="transition-fade">
   <section id="about">
-    <a class="absolute mob-hide btn-close"  href="<?= $site->url() ?>">
+    <a class="absolute mob-hide btn-close" href="<?= $site->url() ?>">
       <span class="close"></span>
     </a>
     <?php snippet('mobnav') ?>
@@ -26,9 +26,15 @@
               </div>
 
               <ul class="justify-center mb-2">
-                <li><a href="<?= $site->instagram() ?>" target="_blank">INSTAGRAM</a></li>
-                <li><a href="<?= $site->vimeo() ?>" target="_blank">VIMEO</a></li>
-                <li><a href="<?= $site->linktree() ?>" target="_blank">LINKTREE</a></li>
+                <?php if($site->instagram()->isNotEmpty()): ?>
+                  <li><a href="<?= $site->instagram() ?>" target="_blank">INSTAGRAM</a></li>
+                <?php endif ?>
+                <?php if($site->vimeo()->isNotEmpty()): ?>
+                  <li><a href="<?= $site->vimeo() ?>" target="_blank">VIMEO</a></li>
+                <?php endif ?>
+                <?php if($site->linktree()->isNotEmpty()): ?>
+                  <li><a href="<?= $site->linktree() ?>" target="_blank">LINKTREE</a></li>
+                <?php endif ?>
               </ul>
 
               <div class="mb-2">
@@ -40,7 +46,7 @@
               <ul class="credits">
                 <li><a href="#">SOUND : GUILLAUME BONNEAU</a></li>
                 <li><a href="http://siloenouyrit.fr/" target="_blank">Design : Siloé Nouyrit</a></li>
-                <li><a href="https://shimsham.design/" target="_blank">Website : Théo Paolo G.</a></li>
+                <li><a href="https://theogoedert.design/" target="_blank">Website : Théo G.S</a></li>
               </ul>
             </section>
       </div>

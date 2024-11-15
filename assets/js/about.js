@@ -1,31 +1,18 @@
 let bio = document.querySelector(".bio")
 let parcour = document.querySelector(".parcour")
 let btnclose = document.querySelector(".btn-close")
-let navbtn = document.querySelector(".nav-action")
-let offnav = document.querySelector(".offscreen-nav")
 let aboutcontent = document.getElementById("about")
 
-btnclose.addEventListener("click", aboutAction)
-navbtn.addEventListener('click', togglenav)
+// btnclose.addEventListener("click", aboutAction)
 
-function aboutAction(e) {
-  e.preventDefault();
-  if (document.referrer == "") {
-    window.location.href = "/";
-  } else {
-    window.history.back()
-  }
-}
-
-function togglenav()  {
-  this.classList.toggle('nav-active')
-  offnav.classList.toggle('nav-visible')
-  aboutcontent.classList.toggle('no-scroll')
-
-  if(offnav.classList.contains('nav-visible')){
-    gsap.to(offnav, {x: 0, duration: 1})
-  }
-}
+// function aboutAction(e) {
+//   e.preventDefault();
+//   if (document.referrer == "") {
+//     window.location.href = "/";
+//   } else {
+//     window.history.back()
+//   }
+// }
 
 bio.addEventListener("mouseenter", ()=> {
   if(bio.classList.contains("darkbg")) {

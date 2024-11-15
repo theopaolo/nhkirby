@@ -1,5 +1,7 @@
 let navbtn = document.querySelectorAll(".nav-toggler");
 let offnav = document.querySelector(".main-nav");
+const counter = document.querySelector('.counter');
+const mainnavname = document.querySelector('.main-nav-name');
 
 navbtn.forEach((btn) => {
   btn.addEventListener("click", togglenav);
@@ -7,6 +9,10 @@ navbtn.forEach((btn) => {
 
 function togglenav() {
   this.classList.toggle('nav-active');
+
+  if (counter) {
+    counter.classList.toggle('counter-hide');
+  }
 
   if (offnav.classList.contains('nav-visible')) {
     gsap.to(offnav, {
@@ -32,6 +38,9 @@ function togglenav() {
 offnav.addEventListener('click', (e) => {
   if (e.target.classList.contains('nav-visible')) {
     offnav.classList.remove('nav-visible');
+    if (counter) {
+      counter.classList.remove('counter-hide');
+    }
     gsap.to(offnav, {
       opacity: 0,
       duration: 0.5,
@@ -41,3 +50,21 @@ offnav.addEventListener('click', (e) => {
     });
   }
 });
+
+if (mainnavname) {
+  mainnavname.addEventListener('click', () => {
+    if (offnav.classList.contains('nav-visible')) {
+      offnav.classList.remove('nav-visible');
+      if (counter) {
+        counter.classList.remove('counter-hide');
+      }
+      gsap.to(offnav, {
+        opacity: 0,
+        duration: 0.5,
+        onComplete: () => {
+          offnav.style.display = 'none';
+        }
+      });
+    }
+  });
+}
