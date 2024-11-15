@@ -231,6 +231,13 @@ a:hover {
   text-shadow: 0 0 2px white;
 }
 
+
+.lightbg a:hover,
+.lightbg button:hover {
+  color: var(--light-color);
+  text-shadow: 0 0 2px #a1a1a1;
+}
+
 .webgl {
   position: fixed;
   top: 0;

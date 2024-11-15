@@ -83,11 +83,14 @@ function initRenderer(canvas) {
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.outputColorSpace = THREE.SRGBColorSpace; // Use sRGB color space
+  renderer.toneMapping = THREE.ACESFilmicToneMapping; // Use ACES Filmic tone mapping
+  renderer.toneMappingExposure = 1.5;
   return renderer;
 }
 
 function initOverlay() {
-  const geometry = new THREE.PlaneBufferGeometry(2, 2, 1, 1);
+  const geometry = new THREE.PlaneGeometry(2, 2, 1, 1);
   const material = new THREE.ShaderMaterial({
     transparent: true,
     uniforms: { uAlpha: { value: 1 } },
@@ -140,11 +143,13 @@ function createSphere(imageArray, geometry, textureLoader, size) {
 
   for (let image of imageArray) {
     let imgText = textureLoader.load(image);
+    imgText.colorSpace = THREE.SRGBColorSpace;
     imgText.generateMipmaps = false;
     imgText.wrapS = THREE.RepeatWrapping;
     imgText.repeat.x = -1;
 
     let planeMaterial = new THREE.MeshBasicMaterial({ map: imgText });
+    planeMaterial.map.encoding = THREE.SRGBColorSpace; // Explicit encoding
     planeMaterial.transparent = false;
     planeMaterial.side = THREE.DoubleSide;
 

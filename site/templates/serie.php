@@ -4,7 +4,7 @@ $isdark = $page->bgdark()->toBool();
 $fullheight = $page->marges()->toBool();
 ?>
 
-<main>
+<main class="<?php if ($isdark !== true) { echo "lightbg";} ?>">
   <section id="series">
 
     <?php snippet("nav"); ?>
@@ -62,7 +62,7 @@ $fullheight = $page->marges()->toBool();
                   }
               }
           }
-        ?>
+          ?>
 
         <?php if ($hasNonVideoBlocks): ?>
           <section class="slides bg-light <?php if ($isdark === true) {
@@ -89,14 +89,14 @@ $fullheight = $page->marges()->toBool();
             <?php if ($block->type() == "video"): ?>
               <?php
               $caption = $block->caption();
-              if (
-                  $block->location() == "kirby" &&
-                  ($video = $block->video()->toFile())
-              ) {
-                  $url = $video->url();
-              } else {
-                  $url = $block->url();
-              }
+                if (
+                    $block->location() == "kirby" &&
+                    ($video = $block->video()->toFile())
+                ) {
+                    $url = $video->url();
+                } else {
+                    $url = $block->url();
+                }
               ?>
               <section class="slides <?php if ($isdark === true) {
                   echo "bg-dark";
@@ -113,9 +113,7 @@ $fullheight = $page->marges()->toBool();
       <?php endforeach; ?>
 
       <?php if ($page->video()->isNotEmpty()): ?>
-        <section class="slides <?php if ($isdark === true) {
-            echo "bg-dark";
-        } ?>">
+        <section class="slides <?php if ($isdark === true) { echo "bg-dark";} ?>">
           <div class="serie-center video-outer">
             <div class="video-inner video-player">
               <iframe src="<?= $page

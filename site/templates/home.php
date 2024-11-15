@@ -41,13 +41,13 @@
 
 <section class="imgverticales">
   <?php foreach ($page->find("verticales")->images()->shuffle() as $image): ?>
-    <span data-imgurl="<?= $image->thumb(["width" => 900])->url() ?>"></span>
+    <span data-imgurl="<?= $image->thumb(["width" => 1000, "format" => "webp"])->url() ?>"></span>
   <?php endforeach; ?>
 </section>
 
 <section class="imghorizontales">
   <?php foreach ($page->find("horizontales")->images()->shuffle() as $image): ?>
-    <span data-imgurl="<?= $image->thumb(["width" => 900])->url() ?>"></span>
+    <span data-imgurl="<?= $image->thumb(["width" => 1000, "format" => "webp"])->url() ?>"></span>
   <?php endforeach; ?>
 </section>
 
